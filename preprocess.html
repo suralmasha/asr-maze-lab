@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f3f6fb">
+  <title>04 · Шумоподавление - Голосовой лабиринт</title>
+  <link rel="stylesheet" href="workshop.css"><script defer src="audio-settings.js"></script><script defer src="preprocess.js"></script>
+</head>
+<body><a class="skip-link" href="#stage-content">К содержимому этапа</a><main class="wrap">
+  <header class="masthead"><div class="brand"><div class="brand-mark" aria-hidden="true">◉</div><div><p class="eyebrow">Интерактивная лаборатория ASR</p><h1>Голосовой лабиринт</h1><p class="subtitle">Попробуй сделать свою запись чище</p></div></div><div class="lesson-chip">Этап 4 из 7</div></header>
+  <nav class="stage-nav" aria-label="Этапы лаборатории"><a href="collect.html">01 Данные</a><a href="sound.html">02 Звук</a><a href="compare.html">03 Сравнение</a><a class="selected" aria-current="page" href="preprocess.html">04 Шумоподавление</a><a href="visualize.html">05 Признаки</a><a href="train.html">06 Обучение</a><a href="index.html">07 Лабиринт</a></nav>
+  <section class="hero" id="stage-content" tabindex="-1"><h2>Попробуй убрать шум</h2><p>Выбери запись и подвигай ползунок. Слева ты увидишь исходный звук, справа - звук после обработки. Послушай оба варианта: стало ли меньше шума и сохранился ли голос?</p></section>
+  <section class="plot-panel" aria-label="Эксперимент с шумоподавлением">
+    <div class="selectors"><label>Команда<select id="label"><option value="up">↑ Вверх</option><option value="down">↓ Вниз</option><option value="left">← Влево</option><option value="right">→ Вправо</option></select></label><label>Файл<select id="filename"></select></label></div>
+    <div class="experiment-controls">
+      <label class="control-field" for="strength"><span>Сила шумоподавления: <output id="strength-value" for="strength">1,0</output></span><input id="strength" type="range" min="0" max="2" step="0.1" value="1" aria-describedby="strength-help"><small id="strength-help" class="control-help">Начни с 1 и сравни результат на слух. На 0 звук не меняется, на 2 шум подавляется сильнее, но голос тоже может измениться.</small></label>
+      <label class="control-field" for="n-fft">Размер окна (n_fft)<select id="n-fft"><option value="256">256 отсчетов · 16 мс</option><option value="512" selected>512 отсчетов · 32 мс</option><option value="1024">1024 отсчета · 64 мс</option><option value="2048">2048 отсчетов · 128 мс</option></select></label>
+    </div>
+    <div class="comparison-grid audio-pair"><div class="listen"><strong>1. Исходная запись</strong><audio id="original-audio" controls preload="none" aria-label="Исходная запись"></audio></div><div class="listen"><strong>2. После шумоподавления</strong><audio id="processed-audio" controls preload="none" aria-label="Запись после шумоподавления"></audio></div></div>
+    <div id="plot-box" class="plot-box" aria-busy="true"><div id="plot-status" role="status" aria-live="polite">Загружаю твои записи…</div><img id="plot" class="plot-image" width="1552" height="839" alt="Волновая форма и спектрограмма исходной записи и записи после шумоподавления" hidden></div>
+    <div class="apply-settings"><button class="action" id="apply-preprocessing" type="button">Применить</button><p id="preprocessing-status" class="control-help" role="status" aria-live="polite">Нажми «Применить», чтобы использовать это шумоподавление для всех записей на следующих этапах.</p></div>
+  </section>
+  <div class="explanations"><article><h3>Мягкое спектральное шумоподавление</h3><p>Компьютер оценивает шум по 20% самых тихих окон записи. Затем ослабляет частоты, где преобладает шум, и сглаживает изменения фильтра во времени.</p></article><article><h3>Качество речи</h3><p>Прислушайся к голосу: вместе с шумом могут исчезнуть части слова. После нажатия «Применить» выбранный фильтр будет обрабатывать все записи для признаков, обучения и распознавания. Исходные WAV сохраняются.</p></article></div>
+  <div class="footer-actions"><a class="action secondary" href="compare.html">К сравнению</a><a class="action" href="visualize.html">К признакам →</a></div>
+</main></body>
+</html>

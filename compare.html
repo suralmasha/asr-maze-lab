@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f3f6fb">
+  <title>03 · Сравнение - Голосовой лабиринт</title>
+  <link rel="stylesheet" href="workshop.css"><script defer src="compare.js"></script>
+</head>
+<body><a class="skip-link" href="#stage-content">К содержимому этапа</a><main class="wrap">
+  <header class="masthead"><div class="brand"><div class="brand-mark" aria-hidden="true">◉</div><div><p class="eyebrow">Интерактивная лаборатория ASR</p><h1>Голосовой лабиринт</h1><p class="subtitle">Сравни свои записи и найди похожие детали</p></div></div><div class="lesson-chip">Этап 3 из 7</div></header>
+  <nav class="stage-nav" aria-label="Этапы лаборатории"><a href="collect.html">01 Данные</a><a href="sound.html">02 Звук</a><a class="selected" aria-current="page" href="compare.html">03 Сравнение</a><a href="preprocess.html">04 Шумоподавление</a><a href="visualize.html">05 Признаки</a><a href="train.html">06 Обучение</a><a href="index.html">07 Лабиринт</a></nav>
+  <section class="hero" id="stage-content" tabindex="-1"><h2>Сравни 2 записи</h2><p>Сравни две разные команды или два разных голоса.</p></section>
+  <section class="plot-panel" aria-label="Сравнение записей">
+    <div class="comparison-layout">
+      <fieldset class="comparison-card"><legend>Запись 1</legend><div class="selectors"><label>Команда<select id="label-1"><option value="up">↑ Вверх</option><option value="down">↓ Вниз</option><option value="left">← Влево</option><option value="right">→ Вправо</option></select></label><label>Файл<select id="filename-1"></select></label></div><audio id="audio-1" controls preload="none" aria-label="Прослушать запись 1"></audio></fieldset>
+      <fieldset class="comparison-card"><legend>Запись 2</legend><div class="selectors"><label>Команда<select id="label-2"><option value="up">↑ Вверх</option><option value="down" selected>↓ Вниз</option><option value="left">← Влево</option><option value="right">→ Вправо</option></select></label><label>Файл<select id="filename-2"></select></label></div><audio id="audio-2" controls preload="none" aria-label="Прослушать запись 2"></audio></fieldset>
+      <div id="plot-box" class="plot-box comparison-plot" aria-busy="true"><div id="plot-status" role="status" aria-live="polite">Загружаю твои записи…</div><img id="plot" class="plot-image" width="1725" height="828" alt="Сравнение 2 записей: волновая форма, усредненный спектр и спектрограмма. Верхний ряд - запись 1, нижний ряд - запись 2" hidden></div>
+    </div>
+  </section>
+  <div class="explanations"><article><h3>1. Форма и длительность</h3><p>Сравни паузы, громкость и длину слова. Даже если ты произносишь ту же команду, записи немного отличаются.</p></article><article><h3>2. Частоты и энергия</h3><p>Поищи похожие узоры у одинаковых слов и отличия у разных. Сравни разные слова, а затем записи той же команды с разными голосами.</p></article></div>
+  <div class="footer-actions"><a class="action secondary" href="sound.html">К звуку</a><a class="action" href="preprocess.html">К шумоподавлению →</a></div>
+</main></body>
+</html>

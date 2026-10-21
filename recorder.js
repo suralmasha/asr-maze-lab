@@ -1,10 +1,10 @@
 "use strict";
-// Local microphone capture -> 16 kHz mono PCM WAV. No network calls.
-// Uses ScriptProcessorNode for compatibility with the supplied offline browsers.
+// Запись микрофона в WAV PCM mono 16 кГц.
+// ScriptProcessorNode сохраняет совместимость с локальными браузерами.
 
 function pcmWavFromChunks(chunks, sampleRate) {
   const total = chunks.reduce((s, x) => s + x.length, 0);
-  if (!total) throw new Error("Микрофон не записал звуковые данные.");
+  if (!total) throw new Error("Не удалось записать звук. Попробуй включить микрофон еще раз.");
   const raw = new Float32Array(total);
   let cursor = 0;
   for (const chunk of chunks) { raw.set(chunk, cursor); cursor += chunk.length; }
@@ -46,8 +46,8 @@ class VoiceRecorder {
   get isRecording() { return !!this.active; }
 
   async start({ maxSeconds = 5, onLimit = () => {} } = {}) {
-    if (this.active || this.starting) throw new Error("Запись уже идёт.");
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error("Открой страницу через http://localhost:8000 и разреши микрофон.");
+    if (this.active || this.starting) throw new Error("Ты уже записываешь звук. Сначала останови текущую запись.");
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error("Открой лабораторию через http://localhost:8000 и разреши браузеру доступ к микрофону.");
     this.starting = true;
     let stream, context;
     try {
@@ -84,7 +84,7 @@ class VoiceRecorder {
 
   async stop() {
     const s = this.active;
-    if (!s) throw new Error("Запись ещё не началась.");
+    if (!s) throw new Error("Сначала нажми кнопку записи и произнеси команду.");
     this.active = null;
     s.processor.onaudioprocess = null;
     s.source.disconnect(); s.processor.disconnect(); s.muted.disconnect();

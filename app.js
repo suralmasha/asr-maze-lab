@@ -1,6 +1,6 @@
 "use strict";
 
-// # 1. Игровое поле: # — стена, S — старт, F — финиш, . — дорожка.
+// # 1. Игровое поле: # - стена, S - старт, F - финиш, . - дорожка.
 // Менять лабиринт можно прямо здесь. Длина всех строк должна совпадать.
 const MAP = [
   "#########",
@@ -39,7 +39,7 @@ let rules = loadRules();
 function normalize(value) {
   return String(value)
     .toLocaleLowerCase("ru-RU")
-    .replace(/ё/g, "е")
+    .replace(/\u0451/g, "е")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
@@ -63,7 +63,7 @@ function loadRules() {
 
 function saveRules() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); }
-  catch { /* Сайт работает и при отключённом localStorage. */ }
+  catch { /* Сайт работает и при отключенном localStorage. */ }
 }
 
 function setStatus(title, detail, kind = "neutral") {
@@ -105,7 +105,7 @@ function renderRules() {
   if (rules.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-rules";
-    empty.textContent = "Правил пока нет. Начни с четырёх направлений: «вверх», «вниз», «влево», «вправо».";
+    empty.textContent = "Правил пока нет. Начни с 4 направлений: «вверх», «вниз», «влево», «вправо».";
     list.append(empty);
     return;
   }
@@ -138,7 +138,7 @@ function renderRules() {
   });
 }
 
-// # 3. Конструктор: школьники сопоставляют произносимую фразу и действие.
+// # 3. Конструктор: участники сопоставляют произносимую фразу и действие.
 $("rule-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const phrase = normalize($("phrase").value);
@@ -150,7 +150,7 @@ $("rule-form").addEventListener("submit", (event) => {
     return;
   }
   if (rules.length >= 30) {
-    setStatus("Слишком много правил", "Для этого задания достаточно 30 правил.", "warning");
+    setStatus("Слишком много правил", "У тебя уже 30 правил. Удали ненужное, чтобы добавить новое.", "warning");
     return;
   }
   rules.push({ phrase, direction, steps });
@@ -158,19 +158,19 @@ $("rule-form").addEventListener("submit", (event) => {
   renderRules();
   $("phrase").value = "";
   $("phrase").focus();
-  setStatus("Новое правило добавлено", `«${phrase}» → ${DIRECTIONS[direction].name}, ${steps} клетк(и).`, "success");
+  setStatus("Новое правило добавлено", `Команда «${phrase}»: направление ${DIRECTIONS[direction].name}, шагов: ${steps}.`, "success");
 });
 
 $("clear-rules").addEventListener("click", () => {
   if (rules.length === 0) return;
-  if (!window.confirm("Удалить все правила? Движение робота сбрасываться не будет.")) return;
+  if (!window.confirm("Удалить все твои правила? Робот останется на своем месте.")) return;
   rules = [];
   saveRules();
   renderRules();
-  setStatus("Правила очищены", "Можно собрать новую систему команд.");
+  setStatus("Правила очищены", "Теперь можешь придумать новые правила.");
 });
 
-// # 4. Логика команд: найдём самое длинное подходящее правило.
+// # 4. Логика команд: найдем самое длинное подходящее правило.
 // Например, «поверни направо» должно выигрывать у «направо».
 function findRule(text) {
   const padded = ` ${normalize(text)} `;
@@ -188,13 +188,13 @@ function executeCommand(spokenText) {
   commands++;
   if (finished) {
     renderMaze();
-    setStatus("Финиш уже достигнут!", "Нажми «Начать заново», чтобы пройти лабиринт ещё раз.", "success");
+    setStatus("Финиш уже достигнут!", "Нажми «Начать заново», чтобы пройти лабиринт еще раз.", "success");
     return;
   }
   const rule = findRule(text);
   if (!rule) {
     renderMaze();
-    setStatus("Команда не найдена", `Распознано: «${spokenText}». Добавь для неё правило или попробуй другую фразу.`, "warning");
+    setStatus("Команда не найдена", `Для команды «${spokenText}» пока нет правила. Добавь его или попробуй другую команду.`, "warning");
     return;
   }
   const direction = DIRECTIONS[rule.direction];
@@ -210,11 +210,11 @@ function executeCommand(spokenText) {
   }
   renderMaze();
   if (finished) {
-    setStatus("Победа! Робот нашёл финиш!", `Последняя команда: «${spokenText}». Всего ходов: ${moves}, команд: ${commands}.`, "success");
+    setStatus("Победа! Робот нашел финиш!", `Последняя команда: «${spokenText}». Всего ходов: ${moves}, команд: ${commands}.`, "success");
   } else if (!actualSteps) {
-    setStatus("Перед роботом стена", `Фраза «${spokenText}» распознана, правило найдено. Но идти ${direction.name} нельзя.`, "warning");
+    setStatus("Перед роботом стена", `Робот понял «${spokenText}», но ${direction.name} путь закрыт. Попробуй другое направление.`, "warning");
   } else {
-    setStatus("Команда выполнена", `Распознано: «${spokenText}». Робот прошёл ${actualSteps} клетк(и) ${direction.name}.`, "success");
+    setStatus("Команда выполнена", `Твоя команда: «${spokenText}». Робот пошел ${direction.name}. Шагов: ${actualSteps}.`, "success");
   }
 }
 
@@ -253,16 +253,16 @@ async function checkServer() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (data.ready) {
-      $("mic-note").textContent = "Используется твой классификатор четырёх слов. Интернет не требуется.";
+      $("mic-note").textContent = "Твоя модель готова. Нажми кнопку и скажи «вверх», «вниз», «влево» или «вправо».";
       setMicButton("● Произнести слово");
     } else {
-      setMicButton("Модель ещё не обучена", false, true);
-      $("mic-note").textContent = data.message || "Открой этап 03 «Обучение» и обучи классификатор.";
+      setMicButton("Модель еще не обучена", false, true);
+      $("mic-note").textContent = data.message || "Перейди на этап 06 «Обучение» и нажми «Обучить модель». Потом возвращайся играть.";
       setStatus("Нет обученной модели", $("mic-note").textContent, "warning");
     }
   } catch(e) {
     setMicButton("Нужен локальный сервер", false, true);
-    $("mic-note").textContent = "Запусти python lab_server.py и открой http://localhost:8000";
+    $("mic-note").textContent = "Похоже, сервер остановлен. Запусти его командой make server и обнови страницу.";
     setStatus("Не удалось соединиться с сервером", $("mic-note").textContent, "error");
   }
 }
@@ -275,14 +275,14 @@ async function micToggle() {
     try {
       await voiceRecorder.start({maxSeconds: 5, onLimit: () => { if(voiceRecorder.isRecording) void micToggle(); }});
       setMicButton("■ Остановить и распознать", true);
-      setStatus("Идёт запись", "Произнеси одно из четырёх слов: вверх, вниз, влево, вправо.");
+      setStatus("Идет запись", "Скажи «вверх», «вниз», «влево» или «вправо». Затем нажми «Остановить и распознать».");
     } catch(e) {
-      setStatus("Ошибка микрофона", e.message || String(e), "error");
+      setStatus("Не получилось включить микрофон", `Проверь доступ к нему в браузере и попробуй еще раз. ${e.message || String(e)}`, "error");
       setMicButton("● Произнести слово");
     } finally { busyMic = false; }
     return;
   }
-  setMicButton("Классифицирую…", false, true);
+  setMicButton("Ищу похожую команду…", false, true);
   try {
     const wav = await voiceRecorder.stop();
     const response = await fetch("/api/predict", {
@@ -292,9 +292,9 @@ async function micToggle() {
     if (!response.ok) throw new Error(result.error || `Ошибка ${response.status}`);
     $("command-input").value = result.text;
     executeCommand(result.text);
-    $("mic-note").textContent = `Модель выбрала: «${result.text}». Расстояния до ближайших записей: ${result.neighbor_distances.join(", ")}. Это не вероятности.`;
+    $("mic-note").textContent = `Твоя модель выбрала «${result.text}». Расстояния до похожих примеров: ${result.neighbor_distances.join(", ")}. Чем меньше число, тем ближе запись к твоей.`;
   } catch(e) {
-    setStatus("Не получилось классифицировать", e.message || String(e), "error");
+    setStatus("Не получилось узнать команду", e.message || String(e), "error");
   } finally {
     busyMic = false;
     setMicButton("● Произнести слово");

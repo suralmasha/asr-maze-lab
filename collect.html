@@ -1,14 +1,21 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>01 · Сбор датасета — Голосовой лабиринт</title><link rel="stylesheet" href="workshop.css">
-<script defer src="recorder.js"></script><script defer src="collect.js"></script></head>
-<body><main class="wrap">
-<header class="topbar"><a class="logo" href="collect.html">◉ ASR LAB</a><nav><a class="active" href="collect.html">01 · Записи</a><a href="visualize.html">02 · Признаки</a><a href="train.html">03 · Обучение</a><a href="index.html">04 · Лабиринт</a></nav></header>
-<div class="hero"><div class="overline">ЭТАП 01 / ДАННЫЕ</div><h1>Научи компьютер слышать</h1>
-<p>Соберём маленький датасет: по 5–10 произнесений каждого слова. Каждый школьник добавляет один пример — никакого программирования.</p>
-<div class="note"><strong>Как записывать:</strong> нажми «Начать запись», произнеси <strong>только указанное слово</strong>, нажми «Сохранить WAV». Длительность — 0,4–5 секунд. Имена файлов назначаются автоматически: <code>01.wav</code>, <code>02.wav</code>… отдельно для каждой команды.</div></div>
-<div class="summary"><div><span>Всего записей</span><strong id="total">0</strong></div><div><span>Для обучения</span><strong id="goal">0 / 20</strong></div><div><span>Формат</span><strong>16 кГц · mono WAV</strong></div></div>
-<div id="cards" class="cards"></div>
-<div class="footer-actions"><div id="notice" role="status" aria-live="polite">Готов к записи.</div><a class="action secondary" id="export" href="/api/dataset.zip" download>↓ Скачать датасет ZIP (необязательно)</a><a class="action" href="visualize.html">К спектрограммам →</a></div>
-<p class="privacy">Файлы сохраняются только на этом ноутбуке в папке <code>dataset/</code>. Ничего не отправляется в интернет. Для удаления неудачной записи нажми × напротив неё.</p>
-</main></body></html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f3f6fb">
+  <title>01 · Данные - Голосовой лабиринт</title>
+  <link rel="stylesheet" href="workshop.css">
+  <script defer src="recorder.js"></script><script defer src="collect.js"></script>
+</head>
+<body><a class="skip-link" href="#stage-content">К содержимому этапа</a><main class="wrap">
+  <header class="masthead"><div class="brand"><div class="brand-mark" aria-hidden="true">◉</div><div><p class="eyebrow">Интерактивная лаборатория ASR</p><h1>Голосовой лабиринт</h1><p class="subtitle">Запиши команды и собери свой набор примеров</p></div></div><div class="lesson-chip">Этап 1 из 7</div></header>
+  <nav class="stage-nav" aria-label="Этапы лаборатории"><a class="selected" aria-current="page" href="collect.html">01 Данные</a><a href="sound.html">02 Звук</a><a href="compare.html">03 Сравнение</a><a href="preprocess.html">04 Шумоподавление</a><a href="visualize.html">05 Признаки</a><a href="train.html">06 Обучение</a><a href="index.html">07 Лабиринт</a></nav>
+  <section class="hero" id="stage-content" tabindex="-1"><h2>Начни с 4 команд</h2>
+    <p>Минимум - по 5 записей на команду<br>Максимум - 50 записей</p>
+    <div class="note"><strong>Как записывать:</strong> выбери команду и нажми «Начать запись», произнеси <strong>только указанное слово</strong>, нажми «Сохранить WAV». Длительность - 0,4-5 секунд. Имена файлов назначаются автоматически: <code>01.wav</code>, <code>02.wav</code>… отдельно для каждой команды.</div>
+  </section>
+  <div class="summary"><div><span>Всего записей</span><strong id="total">0</strong></div><div><span>Формат</span><strong>16 кГц · mono WAV</strong></div></div>
+  <div id="cards" class="cards"></div>
+  <div class="footer-actions"><div id="notice" role="status" aria-live="polite" aria-atomic="true">Загружаю твои записи…</div><a class="action secondary" id="export" href="/api/dataset.zip" download>Скачать записи ZIP</a><a class="action" href="sound.html">К звуку →</a></div>
+  <p class="privacy">Твои записи остаются на этом компьютере в папке <code>dataset/</code>. Если пример не удался, прослушай его и удали кнопкой ×.</p>
+</main></body>
+</html>
