@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,7 @@ from features import (
     load_wav,
     suppress_noise,
 )
+from model_history import ModelHistory
 from trainer import (
     portable_neighbors,
     portable_predict,
@@ -49,6 +51,59 @@ class TrainingManager:
             "message": "Запиши хотя бы по 5 примеров каждой команды и нажми «Обучить модель».",
         }
         self.last_vector: np.ndarray | None = None
+        self.history: ModelHistory | None = None
+        self.feature_callback: Callable[[Path, dict[str, Any]], np.ndarray] | None = (
+            None
+        )
+        self.generation = 0
+
+    def configure_history(self, history: ModelHistory | None) -> None:
+        """
+        Настраивает историю для режима предрасчета.
+
+        :param history: Хранилище или None для расчета по запросу.
+        """
+        with self.lock:
+            self.history = history
+
+    def configure_features(
+        self, callback: Callable[[Path, dict[str, Any]], np.ndarray] | None
+    ) -> None:
+        """
+        Подключает кеш извлечения исходных признаков.
+
+        :param callback: Вычисление признаков WAV по настройкам или None.
+        """
+        with self.lock:
+            self.feature_callback = callback
+
+    def invalidate(self) -> None:
+        """Отменяет устаревшее обучение при изменении датасета."""
+        with self.lock:
+            self.generation += 1
+            self.last_vector = None
+            self.state = {
+                "state": "idle",
+                "stage": "",
+                "completed": 0,
+                "total": 0,
+                "percent": 0,
+                "message": "Датасет изменился. Обучи модель заново.",
+            }
+
+    def _progress(self, generation: int, **kwargs: Any) -> bool:
+        """
+        Обновляет состояние только актуальной задачи.
+
+        :param generation: Поколение задачи.
+        :param kwargs: Поля состояния.
+        :return: Признак актуальной задачи.
+        """
+        with self.lock:
+            if self.generation != generation:
+                return False
+            self.state.update(kwargs)
+            return True
 
     def status(self) -> dict[str, Any]:
         """
@@ -128,6 +183,31 @@ class TrainingManager:
                 raise ValueError(
                     "Выбери меньше соседей: их не может быть больше, чем примеров для обучения."
                 )
+            history = self.history
+            experiment = (
+                history.experiment(options, settings is None) if history else None
+            )
+            if history and experiment:
+                try:
+                    metadata = history.select(experiment[0])
+                except FileNotFoundError:
+                    pass
+                else:
+                    self.last_vector = None
+                    self.state = {
+                        "state": "done",
+                        "stage": "done",
+                        "completed": len(paths),
+                        "total": len(paths),
+                        "percent": 100,
+                        "settings": metadata["settings"],
+                        "training_count": training_count,
+                        "source_count": len(paths),
+                        "model_id": experiment[0],
+                        "reused": True,
+                        "message": "Активирована сохраненная модель с этими настройками.",
+                    }
+                    return dict(self.state)
             self.state = {
                 "state": "running",
                 "stage": "features",
@@ -140,8 +220,11 @@ class TrainingManager:
                 "message": f"Считаю {2 * options['n_mfcc']} признаков для каждой твоей записи",
             }
             self.last_vector = None
+            generation = self.generation
         threading.Thread(
-            target=self._run_experiment, args=(paths, model, settings), daemon=True
+            target=self._run_experiment,
+            args=(paths, model, settings, generation, history, experiment),
+            daemon=True,
         ).start()
         return self.status()
 
@@ -159,6 +242,9 @@ class TrainingManager:
         paths: list[tuple[str, Path]],
         model: Path,
         settings: dict[str, Any] | None,
+        generation: int | None = None,
+        history: ModelHistory | None = None,
+        experiment: tuple[str, int] | None = None,
     ) -> None:
         """
         Извлекает признаки, обучает модель и атомарно сохраняет результат.
@@ -166,19 +252,27 @@ class TrainingManager:
         :param paths: Классы и пути записей.
         :param model: Путь результирующего NPZ.
         :param settings: Параметры эксперимента или исходный алгоритм.
+        :param generation: Поколение задачи или текущее поколение.
+        :param history: Хранилище результатов или None.
+        :param experiment: Ключ и поколение истории.
         """
+        if generation is None:
+            generation = self.generation
         try:
             features, labels, names, augmented = [], [], [], []
             options = settings or validate_settings()
             random = np.random.default_rng(42)
             for index, (label, path) in enumerate(paths, 1):
+                if not self._progress(generation):
+                    return
                 try:
                     samples = load_wav(path)
-                    vector = (
-                        extract_features(samples)
-                        if settings is None
-                        else extract_features_with_settings(samples, settings)
-                    )
+                    if settings is None:
+                        vector = extract_features(samples)
+                    elif self.feature_callback is not None:
+                        vector = self.feature_callback(path, settings)
+                    else:
+                        vector = extract_features_with_settings(samples, settings)
                 except (ValueError, OSError) as exc:
                     raise ValueError(f"Ошибка {label}/{path.name}: {exc}") from exc
                 features.append(vector)
@@ -204,32 +298,55 @@ class TrainingManager:
                     labels.append(label)
                     names.append(path)
                     augmented.append(True)
-                self.change(
+                if not self._progress(
+                    generation,
                     completed=index,
                     percent=round(index / len(paths) * 85),
                     message=f"Считаю признаки твоих записей: готово {index} из {len(paths)}",
-                )
+                ):
+                    return
             matrix, classes = np.vstack(features), np.asarray(labels)
-            self.change(
+            if not self._progress(
+                generation,
                 stage="fit",
                 percent=90,
                 message="Запоминаю твои примеры, чтобы узнавать новые команды",
-            )
+            ):
+                return
             classifier = (
                 train(matrix, classes)
                 if settings is None
                 else train_with_settings(matrix, classes, settings)
             )
-            classifier.asr_augmented = np.asarray(augmented, dtype=bool)
-            self.change(stage="save", percent=96, message="Сохраняю твою модель")
+            classifier.asr_augmented = np.asarray(augmented, dtype=bool)  # ty: ignore[unresolved-attribute]
+            if not self._progress(
+                generation, stage="save", percent=96, message="Сохраняю твою модель"
+            ):
+                return
             model.parent.mkdir(parents=True, exist_ok=True)
             # Атомарная замена не позволяет прочитать недописанный NPZ во время игры.
             with tempfile.TemporaryDirectory(dir=model.parent) as temporary:
                 output = save_classifier(
                     classifier, Path(temporary), matrix, classes, paths=names
                 )
-                os.replace(output, model)
-            self.change(
+                with self.lock:
+                    if self.generation != generation:
+                        return
+                    if history and experiment:
+                        if not history.save(
+                            experiment[0], experiment[1], output, options
+                        ):
+                            self.state.update(
+                                state="idle",
+                                stage="",
+                                percent=0,
+                                message="Датасет изменился. Обучи модель заново.",
+                            )
+                            return
+                    else:
+                        os.replace(output, model)
+            self._progress(
+                generation,
                 state="done",
                 stage="done",
                 percent=100,
@@ -240,7 +357,7 @@ class TrainingManager:
             logger.exception(
                 "Failed to train model", extra={"path": str(model), "error": str(exc)}
             )
-            self.change(state="error", stage="error", message=str(exc))
+            self._progress(generation, state="error", stage="error", message=str(exc))
 
     def set_probe(self, vector: np.ndarray) -> None:
         """

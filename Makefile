@@ -1,4 +1,5 @@
 PYTHON := .venv/bin/python
+MODE ?= on-demand
 
 .PHONY: setup download-model run
 
@@ -7,7 +8,7 @@ setup:
 	$(PYTHON) -m pip install -r requirements.txt
 
 server:
-	$(PYTHON) lab_server.py
+	$(PYTHON) lab_server.py --mode $(MODE)
 
 down:
 	lsof -ti :8000 | xargs kill

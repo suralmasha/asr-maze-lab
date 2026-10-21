@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import io
 import json
 import logging
@@ -20,20 +21,19 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from experiment_runtime import ExperimentRuntime
 from experiment_settings import DEFAULT_SETTINGS, MAX_SAMPLES, validate_settings
 from features import (
     LABELS,
-    encode_wav,
     load_wav,
     make_comparison_figure,
     make_configured_figure,
     make_feature_signal_figure,
     make_figure,
     make_mel_figure,
-    make_preprocessing_figure,
     make_signal_figure,
-    suppress_noise,
 )
+from model_history import ModelHistory
 from trainer import model_features, model_settings, portable_predict
 from training_web import TrainingManager, explain, projection_data, projection_png
 
@@ -68,6 +68,59 @@ training = TrainingManager()
 _classifier = None
 _classifier_stamp = None
 logger = logging.getLogger(__name__)
+MODE = "on-demand"
+_runtime: ExperimentRuntime | None = None
+_history: ModelHistory | None = None
+_runtime_lock = threading.RLock()
+
+
+def runtime() -> ExperimentRuntime:
+    """
+    Получает состояние текущего сервера с поддержкой изолированных тестов.
+
+    :return: Настройки и кеш лаборатории.
+    """
+    global _runtime, _history
+    with _runtime_lock:
+        if _runtime is None or (
+            _runtime.dataset,
+            _runtime.directory,
+            _runtime.mode,
+        ) != (DATA, MODEL.parent, MODE):
+            if _runtime is not None and _runtime.cache is not None:
+                _runtime.cache.stop()
+            _runtime = ExperimentRuntime(DATA, MODEL.parent, MODE, _lock)
+            _history = (
+                ModelHistory(MODEL.parent / "history", MODEL, DATA)
+                if MODE == "precompute"
+                else None
+            )
+            if MODE == "on-demand":
+                (MODEL.parent / "history" / "active.txt").unlink(missing_ok=True)
+        training.configure_history(_history)
+        training.configure_features(
+            _runtime.vector if _runtime.cache is not None else None
+        )
+        if _runtime.sync_dataset():
+            training.invalidate()
+            if _history is not None:
+                _history.sync_dataset()
+        return _runtime
+
+
+def models_response() -> dict[str, Any]:
+    """
+    Собирает список моделей для интерфейса.
+
+    :return: Доступность истории, модели и активный идентификатор.
+    """
+    runtime()
+    models = _history.list_models() if _history is not None else []
+    return {
+        "enabled": _history is not None,
+        "models": models,
+        "active_id": next((item["id"] for item in models if item["active"]), None),
+    }
 
 
 def model_loaded() -> dict[str, Any] | None:
@@ -229,6 +282,13 @@ class Handler(SimpleHTTPRequestHandler):
         """Обрабатывает чтение страниц, графиков и состояния обучения."""
         path = urlsplit(self.path).path
         try:
+            state = runtime()
+            if path == "/api/settings":
+                return self.json_response(200, state.get_settings())
+            if path == "/api/cache/status":
+                return self.json_response(200, state.cache_status())
+            if path == "/api/models":
+                return self.json_response(200, models_response())
             if path == "/api/health":
                 model = model_loaded()
                 return self.json_response(
@@ -308,18 +368,33 @@ class Handler(SimpleHTTPRequestHandler):
                     }
                 )
                 if path.startswith("/api/preprocess"):
-                    strength = float(params.get("strength", ["1"])[0])
-                    processed = suppress_noise(samples, strength, options["n_fft"])
-                    if path.endswith("/audio"):
-                        return self.bytes_response(
-                            200, encode_wav(processed), "audio/wav"
-                        )
-                    with _lock:
-                        return self.figure_response(
-                            make_preprocessing_figure(
-                                samples, processed, options["n_fft"]
-                            )
-                        )
+                    options = validate_settings(
+                        {
+                            **options,
+                            "denoise_strength": float(params.get("strength", ["1"])[0]),
+                            "denoise_n_fft": options["n_fft"],
+                            "trim_silence": params.get("trim_silence", ["false"])[0],
+                        }
+                    )
+                    image = state.result(
+                        "audio" if path.endswith("/audio") else "preprocess",
+                        source,
+                        options,
+                    )
+                    return self.bytes_response(
+                        200,
+                        image,
+                        "audio/wav" if path.endswith("/audio") else "image/png",
+                    )
+                if path == "/api/plot" and params.get("view", [""])[0] in (
+                    "features",
+                    "mel",
+                ):
+                    return self.bytes_response(
+                        200,
+                        state.result(params["view"][0], source, options),
+                        "image/png",
+                    )
                 view = params.get("view", [""])[0]
                 if view == "features":
                     with _lock:
@@ -453,8 +528,58 @@ class Handler(SimpleHTTPRequestHandler):
         """Обрабатывает запись WAV, обучение, проверку и удаление записей."""
         path = urlsplit(self.path).path
         try:
+            state = runtime()
+            if path in (
+                "/api/settings",
+                "/api/cache/warm",
+                "/api/cache/clear",
+                "/api/models/select",
+                "/api/models/delete",
+                "/api/models/clear",
+            ):
+                body = self.training_options()
+                if path == "/api/settings":
+                    return self.json_response(200, state.update_settings(body))
+                if path == "/api/cache/warm":
+                    selected = sample_path(
+                        {
+                            "label": [str(body.get("label", ""))],
+                            "file": [str(body.get("file", ""))],
+                        }
+                    )
+                    state.warm(str(body.get("page", "")), selected)
+                    return self.json_response(200, state.cache_status())
+                if path == "/api/cache/clear":
+                    state.clear_cache()
+                    return self.json_response(200, state.cache_status())
+                if _history is None:
+                    raise ValueError("История моделей доступна в режиме предрасчета.")
+                training.invalidate()
+                if path == "/api/models/select":
+                    metadata = _history.select(str(body.get("id", "")))
+                    state.update_settings(metadata["settings"])
+                elif path == "/api/models/delete":
+                    _history.delete(str(body.get("id", "")))
+                else:
+                    _history.clear()
+                active = model_loaded()
+                training.change(
+                    state="done" if active is not None else "idle",
+                    stage="done" if active is not None else "",
+                    percent=100 if active is not None else 0,
+                    message="Выбранная модель готова к проверке и игре."
+                    if active is not None
+                    else "Модели удалены. Обучи новый вариант.",
+                    settings=model_settings(active)
+                    if active is not None
+                    else state.settings,
+                )
+                return self.json_response(200, models_response())
             if path == "/api/train/start":
                 options = self.training_options()
+                if options:
+                    checked = validate_settings(options)
+                    state.update_settings(checked)
                 state = (
                     training.start_experiment(DATA, MODEL, options)
                     if options
@@ -471,7 +596,17 @@ class Handler(SimpleHTTPRequestHandler):
                         },
                     )
                 _, samples = self.get_audio()
-                vector = model_features(model, samples)
+                denoise = self.params().get("denoise", ["true"])[0]
+                if denoise not in ("true", "false"):
+                    raise ValueError("denoise: требуется true или false.")
+                if denoise == "false" and int(model["feature_version"]) == 2:
+                    from features import extract_features_with_settings
+
+                    vector = extract_features_with_settings(
+                        samples, {**model_settings(model), "denoise_strength": 0}
+                    )
+                else:
+                    vector = model_features(model, samples)
                 if path.endswith("probe"):
                     response = explain(model, vector)
                     training.set_probe(vector)
@@ -512,6 +647,7 @@ class Handler(SimpleHTTPRequestHandler):
                             break
                         except FileExistsError:
                             number += 1
+                runtime()
                 return self.json_response(
                     201,
                     {
@@ -524,6 +660,7 @@ class Handler(SimpleHTTPRequestHandler):
                 sample = sample_path(self.params())
                 with _lock:
                     sample.unlink(missing_ok=False)
+                runtime()
                 return self.json_response(200, {"deleted": sample.name})
             return self.json_response(404, {"error": "Неизвестный адрес."})
         except (ValueError, RuntimeError) as exc:
@@ -546,9 +683,19 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main() -> None:
     """Запускает локальный сервер лаборатории на порту 8000."""
+    global MODE
+    parser = argparse.ArgumentParser(description="Локальная ASR-лаборатория")
+    parser.add_argument(
+        "--mode",
+        choices=("on-demand", "precompute"),
+        default="on-demand",
+        help="Режим вычислений",
+    )
+    MODE = parser.parse_args().mode
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     for label in LABELS:
         (DATA / label).mkdir(parents=True, exist_ok=True)
+    runtime()
     with ThreadingHTTPServer((HOST, PORT), Handler) as server:
         logger.info(
             "Service started", extra={"url": f"http://localhost:{PORT}/collect.html"}
@@ -557,6 +704,9 @@ def main() -> None:
             server.serve_forever()
         except KeyboardInterrupt:
             logger.info("Service stopped")
+        finally:
+            if _runtime is not None and _runtime.cache is not None:
+                _runtime.cache.stop()
 
 
 if __name__ == "__main__":
