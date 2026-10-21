@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10152a">
+  <title>Голосовой лабиринт — лаборатория ASR</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="recorder.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">◉</div>
+        <div>
+          <p class="eyebrow">ИНТЕРАКТИВНАЯ ЛАБОРАТОРИЯ • ASR</p>
+          <h1>Голосовой лабиринт</h1>
+          <p class="subtitle">Теперь робот слушает через модель, которую ты обучил на собственных записях.</p>
+        </div>
+      </div>
+      <div class="lesson-chip"><span class="pulse-dot"></span> Мастер-класс · 40 минут</div>
+    </header>
+
+    <nav class="stage-nav"><a href="collect.html">01 · Записать слова</a><a href="visualize.html">02 · Посмотреть признаки</a><a href="train.html">03 · Обучить модель</a><a class="selected" href="index.html">04 · Лабиринт</a></nav>
+    <div class="top-explainer" aria-label="Этапы обработки речи">
+      <span>🎙️ Речь</span><b aria-hidden="true">→</b>
+      <span>🧠 Наш классификатор</span><b aria-hidden="true">→</b>
+      <span>🏷️ Метка команды</span><b aria-hidden="true">→</b>
+      <span>⚙️ Твои правила</span><b aria-hidden="true">→</b>
+      <span>🤖 Действие</span>
+    </div>
+
+    <div class="workspace">
+      <section class="panel maze-panel" aria-labelledby="maze-heading">
+        <div class="panel-topline"><span class="step-chip">04 · ИГРА</span><span class="panel-subtext">S → F</span></div>
+        <h2 id="maze-heading">Лабиринт</h2>
+        <p class="hint">Робот двигается по предсказанию твоей модели. Для игры нужны четыре базовых правила.</p>
+        <div class="maze-container"><div class="maze" id="maze" role="img" aria-label="Лабиринт с роботом, стенами и финишем"></div></div>
+        <div class="legend">
+          <span><i class="legend-swatch legend-robot"></i> Робот</span>
+          <span><i class="legend-swatch legend-wall"></i> Стена</span>
+          <span><i class="legend-swatch legend-finish"></i> Финиш</span>
+        </div>
+        <div class="score-row">
+          <div class="score"><span>Ходов</span><strong id="move-count">0</strong></div>
+          <div class="score"><span>Команд</span><strong id="command-count">0</strong></div>
+          <button class="btn btn-outline reset-btn" id="reset-maze" type="button">↻ Начать заново</button>
+        </div>
+      </section>
+
+      <div class="side-stack">
+        <section class="panel builder-panel" aria-labelledby="builder-heading">
+          <div class="panel-topline"><span class="step-chip">ПРАВИЛА ИГРЫ</span><span class="panel-subtext">Без программирования</span></div>
+          <h2 id="builder-heading">Свяжи класс с движением</h2>
+          <p class="hint">Четыре правила уже добавлены. Их можно менять; модель всё равно распознаёт только четыре обученных слова.</p>
+          <form id="rule-form" class="rule-form">
+            <label class="field-label" for="phrase">ЕСЛИ МОДЕЛЬ ВЫБРАЛА КЛАСС</label>
+            <input id="phrase" class="text-input" type="text" placeholder="Например, вверх" maxlength="60" autocomplete="off" required>
+            <div class="form-grid">
+              <div>
+                <label class="field-label" for="direction">ТО</label>
+                <select id="direction" class="select-input">
+                  <option value="up">↑ Идти вверх</option>
+                  <option value="down">↓ Идти вниз</option>
+                  <option value="left">← Идти влево</option>
+                  <option value="right">→ Идти вправо</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="steps">СКОЛЬКО КЛЕТОК</label>
+                <select id="steps" class="select-input">
+                  <option value="1">1 клетка</option>
+                  <option value="2">2 клетки</option>
+                  <option value="3">3 клетки</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="submit">+ Добавить правило</button>
+          </form>
+          <div class="rules-title-row"><h3>Мои правила <span id="rule-count">0</span></h3><button class="text-button" id="clear-rules" type="button">Очистить</button></div>
+          <div id="rule-list" class="rule-list" aria-live="polite"></div>
+        </section>
+
+        <section class="panel play-panel" aria-labelledby="play-heading">
+          <div class="panel-topline"><span class="step-chip">ПРОВЕРКА МОДЕЛИ</span><span class="panel-subtext">Текст — запасной способ</span></div>
+          <h2 id="play-heading">Испытай управление</h2>
+          <div class="command-grid">
+            <form id="command-form" class="command-form">
+              <label class="field-label" for="command-input">НАПИШИ КОМАНДУ</label>
+              <div class="command-input-row">
+                <input id="command-input" class="text-input" placeholder="Например, вверх" autocomplete="off" required>
+                <button class="btn btn-secondary" type="submit">Проверить →</button>
+              </div>
+            </form>
+            <div class="or-label">или</div>
+            <button class="btn btn-voice" id="listen-btn" type="button"><span class="microphone-icon">🎙️</span><span id="listen-label">Произнести команду</span></button>
+          </div>
+          <div class="status-panel" role="status" aria-live="polite">
+            <span class="status-dot" id="status-dot"></span>
+            <div><strong id="status-title">Готов к командам</strong><p id="status-text">Обучи свою модель, затем произнеси слово.</p></div>
+          </div>
+          <p class="mic-note" id="mic-note">Твой классификатор выдаёт одну из четырёх меток. Передача звука — только на localhost.</p>
+        </section>
+      </div>
+    </div>
+
+    <footer class="footnote">
+      <p><strong>Как это работает?</strong> Обученная школьниками модель преобразует WAV в одну из четырёх меток. Правила лабиринта преобразуют метку в действие.</p>
+      <p>Здесь используется MFCC + k-NN, а не Vosk. Записи этапа сбора сохраняются на ноутбуке; игровые команды не сохраняются.</p>
+    </footer>
+  </main>
+</body>
+</html>

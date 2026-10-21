@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>03 · Обучение — Голосовой лабиринт</title>
+  <link rel="stylesheet" href="workshop.css">
+  <script defer src="recorder.js"></script><script defer src="train.js"></script>
+</head>
+<body><main class="wrap">
+  <header class="topbar"><a class="logo" href="collect.html">◉ ASR LAB</a>
+    <nav><a href="collect.html">01 · Записи</a><a href="visualize.html">02 · Признаки</a><a class="active" href="train.html">03 · Обучение</a><a href="index.html">04 · Лабиринт</a></nav>
+  </header>
+  <section class="hero">
+    <div class="overline">ЭТАП 03 / МОДЕЛЬ</div>
+    <h1>Научи робота различать слова</h1>
+    <p>Компьютер превращает каждую запись в 26 чисел (MFCC), а затем находит записи, похожие на новую команду. Никакого кода: нажми «Обучить» и наблюдай.</p>
+  </section>
+  <section class="train-card" aria-labelledby="train-heading">
+    <div class="train-header"><div><h2 id="train-heading">1. Наши обучающие данные</h2><p class="train-muted">Для запуска нужно минимум 2 WAV каждого слова. Лучше собрать 5–10 примеров.</p></div><a class="action secondary" href="collect.html">+ Добавить записи</a></div>
+    <div class="training-counts" id="counts"><span>Загружаю записи…</span></div>
+    <button class="action train-start" type="button" id="train-button">▶ Обучить модель</button>
+    <div class="train-progress" aria-label="Прогресс обучения">
+      <div class="progress-head"><strong id="progress-stage">Модель ещё не обучалась</strong><span id="progress-percent">0%</span></div>
+      <progress id="progress" value="0" max="100"></progress>
+      <p id="train-message" role="status" aria-live="polite">Добавь записи и запусти обучение.</p>
+    </div>
+    <p class="train-muted">Здесь обучение — не многократное обновление весов нейросети: k-NN сохраняет признаки записей, чтобы затем сравнивать их с новой речью. Прогресс показывает <em>реальную обработку файлов</em>.</p>
+  </section>
+  <section class="train-card" aria-labelledby="pca-heading">
+    <h2 id="pca-heading">2. Как модель видит записи?</h2>
+    <p class="train-muted">Каждая точка — одна запись. Близкие точки на рисунке могут быть похожи, но для предсказания модель сравнивает записи в исходном пространстве <strong>26 признаков</strong>, а не в двумерной картинке.</p>
+    <div class="plot-box training-figure"><div id="projection-status" role="status">График появится после обучения.</div><img id="projection" alt="Двумерная проекция MFCC-признаков четырёх речевых команд" hidden></div>
+  </section>
+  <section class="train-card" aria-labelledby="test-heading">
+    <h2 id="test-heading">3. Проверь на новом голосе</h2>
+    <p class="train-muted">Произнеси одно из четырёх слов. Это будет <strong>новая запись</strong>, которой нет в датасете. После распознавания модель покажет три наиболее похожих примера и расстояния до них.</p>
+    <button id="probe-button" class="action train-start" type="button" disabled>🎙 Произнести команду</button>
+    <p id="probe-status" class="train-muted" role="status" aria-live="polite">Сначала обучи модель.</p>
+    <div id="probe-result" class="probe-result" hidden>
+      <p class="predicted">Предсказание модели: <strong id="predicted"></strong></p>
+      <h3>Три ближайшие записи</h3>
+      <div id="neighbors" class="neighbor-list"></div>
+      <p class="train-muted">Меньше расстояние — запись более похожа. Звезда на графике обозначает новую команду.</p>
+    </div>
+  </section>
+  <div class="footer-actions"><div>Модель автоматически сохраняется в <code>models/keyword_classifier.npz</code>.</div><a class="action" href="index.html">К лабиринту →</a></div>
+</main></body>
+</html>

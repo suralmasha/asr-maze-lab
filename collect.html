@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>01 · Сбор датасета — Голосовой лабиринт</title><link rel="stylesheet" href="workshop.css">
+<script defer src="recorder.js"></script><script defer src="collect.js"></script></head>
+<body><main class="wrap">
+<header class="topbar"><a class="logo" href="collect.html">◉ ASR LAB</a><nav><a class="active" href="collect.html">01 · Записи</a><a href="visualize.html">02 · Признаки</a><a href="train.html">03 · Обучение</a><a href="index.html">04 · Лабиринт</a></nav></header>
+<div class="hero"><div class="overline">ЭТАП 01 / ДАННЫЕ</div><h1>Научи компьютер слышать</h1>
+<p>Соберём маленький датасет: по 5–10 произнесений каждого слова. Каждый школьник добавляет один пример — никакого программирования.</p>
+<div class="note"><strong>Как записывать:</strong> нажми «Начать запись», произнеси <strong>только указанное слово</strong>, нажми «Сохранить WAV». Длительность — 0,4–5 секунд. Имена файлов назначаются автоматически: <code>01.wav</code>, <code>02.wav</code>… отдельно для каждой команды.</div></div>
+<div class="summary"><div><span>Всего записей</span><strong id="total">0</strong></div><div><span>Для обучения</span><strong id="goal">0 / 20</strong></div><div><span>Формат</span><strong>16 кГц · mono WAV</strong></div></div>
+<div id="cards" class="cards"></div>
+<div class="footer-actions"><div id="notice" role="status" aria-live="polite">Готов к записи.</div><a class="action secondary" id="export" href="/api/dataset.zip" download>↓ Скачать датасет ZIP (необязательно)</a><a class="action" href="visualize.html">К спектрограммам →</a></div>
+<p class="privacy">Файлы сохраняются только на этом ноутбуке в папке <code>dataset/</code>. Ничего не отправляется в интернет. Для удаления неудачной записи нажми × напротив неё.</p>
+</main></body></html>

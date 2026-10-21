@@ -1,0 +1,9 @@
+.venv/
+.idea/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+*.[wW][aA][vV]
+*.ipynb
+models/*
+!models/.gitkeep
