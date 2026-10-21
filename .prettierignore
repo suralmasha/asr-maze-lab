@@ -1,0 +1,13 @@
+.agents/
+.venv/
+.idea/
+.ipynb_checkpoints/
+__pycache__/
+dataset/
+models/
+reports/
+node_modules/
+AGENTS.md
+HOST_NOTES.md
+package-lock.json
+*.ipynb

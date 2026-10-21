@@ -1,11 +1,16 @@
 PYTHON := .venv/bin/python
 export PYTHONPATH := src
 
-.PHONY: setup server server-cache down clean test evaluate
+.PHONY: setup setup-dev server server-cache down clean test lint format check precommit evaluate
 
 setup:
 	python3 -m venv .venv
 	$(PYTHON) -m pip install -r requirements.txt
+
+setup-dev: setup
+	$(PYTHON) -m pip install -r requirements/dev.txt
+	npm ci
+	$(PYTHON) -m pre_commit install
 
 server:
 	$(PYTHON) src/lab_server.py --mode on-demand
@@ -25,6 +30,22 @@ clean:
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v
+
+lint:
+	$(PYTHON) -m ruff check .
+	$(PYTHON) -m ruff format --check .
+	npm run lint
+	npm run format:check
+
+format:
+	$(PYTHON) -m ruff check --fix .
+	$(PYTHON) -m ruff format .
+	npm run format
+
+check: lint test
+
+precommit:
+	$(PYTHON) -m pre_commit run --all-files
 
 evaluate:
 	$(PYTHON) scripts/evaluate_model.py $(ARGS)

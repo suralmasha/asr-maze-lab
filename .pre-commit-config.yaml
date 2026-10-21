@@ -1,0 +1,40 @@
+minimum_pre_commit_version: "4.0.0"
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: .venv/bin/python -m ruff check
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: Ruff format
+        entry: .venv/bin/python -m ruff format --check
+        language: system
+        types_or: [python, pyi]
+      - id: eslint
+        name: ESLint
+        entry: npm exec --no -- eslint --config config/eslint.config.mjs --max-warnings 0
+        language: system
+        files: \.(js|mjs)$
+        types: [file]
+      - id: htmlhint
+        name: HTMLHint
+        entry: npm exec --no -- htmlhint --config config/htmlhint.json
+        language: system
+        types: [html]
+      - id: stylelint
+        name: Stylelint
+        entry: npm exec --no -- stylelint --config config/stylelint.json
+        language: system
+        types: [css]
+      - id: prettier
+        name: Prettier
+        entry: npm exec --no -- prettier --check
+        language: system
+        types_or: [javascript, html, css, json, yaml, markdown]
+      - id: detect-secrets
+        name: Detect secrets
+        entry: .venv/bin/detect-secrets-hook --no-verify
+        language: system
+        types: [text]

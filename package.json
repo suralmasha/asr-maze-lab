@@ -1,0 +1,21 @@
+{
+  "name": "asr-maze-lab",
+  "private": true,
+  "engines": {
+    "node": "^22.13.0 || >=24"
+  },
+  "scripts": {
+    "lint": "eslint --config config/eslint.config.mjs --max-warnings 0 \"web/*.js\" \"config/*.mjs\" && htmlhint --config config/htmlhint.json \"web/*.html\" && stylelint --config config/stylelint.json \"web/*.css\"",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "htmlhint": "1.9.2",
+    "prettier": "3.9.10",
+    "stylelint": "17.16.0",
+    "stylelint-config-recommended": "18.0.0"
+  }
+}
