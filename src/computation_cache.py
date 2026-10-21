@@ -11,6 +11,8 @@ from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
+from lab_config import CONFIG
+
 logger = logging.getLogger(__name__)
 Task = tuple[str, Callable[[], bytes]]
 
@@ -18,7 +20,7 @@ Task = tuple[str, Callable[[], bytes]]
 class DiskCache:
     """Хранит результаты на диске и последовательно исполняет фоновые задачи."""
 
-    def __init__(self, root: Path, limit: int = 400_000_000) -> None:
+    def __init__(self, root: Path, limit: int = CONFIG["cache_max_bytes"]) -> None:
         """
         Создает кеш и восстанавливает порядок использования файлов.
 

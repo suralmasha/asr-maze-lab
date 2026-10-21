@@ -33,15 +33,16 @@ from features import (
     make_mel_figure,
     make_signal_figure,
 )
+from lab_config import CONFIG
 from model_history import ModelHistory
 from trainer import model_features, model_settings, portable_predict
 from training_web import TrainingManager, explain, projection_data, projection_png
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "dataset"
 MODEL = ROOT / "models" / "keyword_classifier.npz"
 HOST, PORT = "127.0.0.1", 8000
-MAX_BYTES = 200_000
+MAX_BYTES = CONFIG["audio"]["max_bytes"]
 ALLOWED_FILES = {
     "/",
     "/index.html",
@@ -52,6 +53,7 @@ ALLOWED_FILES = {
     "/visualize.html",
     "/visualize.js",
     "/audio-settings.js",
+    "/configure.js",
     "/sound.html",
     "/sound.js",
     "/workshop.css",
@@ -158,7 +160,7 @@ def model_loaded() -> dict[str, Any] | None:
             LABELS
         ):
             raise ValueError("Некорректные классы обучающих записей.")
-        if not 1 <= int(bundle["k"]) <= min(15, len(matrix)):
+        if not 1 <= int(bundle["k"]) <= min(CONFIG["limits"]["k"][1], len(matrix)):
             raise ValueError("Некорректное количество ближайших соседей.")
         for key in ("train_names", "train_augmented"):
             if key in bundle and len(bundle[key]) != len(matrix):
@@ -219,7 +221,7 @@ class Handler(SimpleHTTPRequestHandler):
         :param args: Позиционные аргументы HTTP-сервера.
         :param kwargs: Именованные аргументы HTTP-сервера.
         """
-        super().__init__(*args, directory=str(ROOT), **kwargs)
+        super().__init__(*args, directory=str(ROOT / "web"), **kwargs)
 
     def json_response(self, status: int, value: Any) -> None:
         """
@@ -282,6 +284,15 @@ class Handler(SimpleHTTPRequestHandler):
         """Обрабатывает чтение страниц, графиков и состояния обучения."""
         path = urlsplit(self.path).path
         try:
+            if path == "/lab-config.js":
+                script = (
+                    "const labConfig = "
+                    + json.dumps(CONFIG, ensure_ascii=False)
+                    + ";\n"
+                )
+                return self.bytes_response(
+                    200, script.encode(), "application/javascript; charset=utf-8"
+                )
             state = runtime()
             if path == "/api/settings":
                 return self.json_response(200, state.get_settings())
@@ -371,7 +382,12 @@ class Handler(SimpleHTTPRequestHandler):
                     options = validate_settings(
                         {
                             **options,
-                            "denoise_strength": float(params.get("strength", ["1"])[0]),
+                            "denoise_strength": float(
+                                params.get(
+                                    "strength",
+                                    [str(CONFIG["preprocessing"]["preview_strength"])],
+                                )[0]
+                            ),
                             "denoise_n_fft": options["n_fft"],
                             "trim_silence": params.get("trim_silence", ["false"])[0],
                         }
@@ -453,8 +469,16 @@ class Handler(SimpleHTTPRequestHandler):
                     for label in LABELS:
                         for wav in sorted((DATA / label).glob("*.wav")):
                             archive.write(wav, arcname=f"dataset/{label}/{wav.name}")
-                    for name in ("features.py", "trainer.py", "experiment_settings.py"):
-                        archive.write(ROOT / name, arcname=name)
+                    for name in (
+                        "features.py",
+                        "trainer.py",
+                        "experiment_settings.py",
+                        "lab_config.py",
+                    ):
+                        archive.write(ROOT / "src" / name, arcname=name)
+                    archive.write(
+                        ROOT / "config" / "lab.json", arcname="config/lab.json"
+                    )
                 return self.bytes_response(
                     200, output.getvalue(), "application/zip", "asr-dataset.zip"
                 )
@@ -490,7 +514,7 @@ class Handler(SimpleHTTPRequestHandler):
         except ValueError:
             size = 0
         if not 44 <= size <= MAX_BYTES:
-            raise ValueError("Некорректный размер WAV (максимум 200 КБ).")
+            raise ValueError(f"Некорректный размер WAV (максимум {MAX_BYTES} байт).")
         payload = self.rfile.read(size)
         if len(payload) != size:
             raise ValueError("WAV получен не полностью.")
@@ -631,7 +655,7 @@ class Handler(SimpleHTTPRequestHandler):
                     recordings = list(folder.glob("*.wav"))
                     if len(recordings) >= MAX_SAMPLES:
                         raise ValueError(
-                            "У тебя уже 50 записей этой команды. Удали ненужный пример, чтобы записать новый."
+                            f"У тебя уже {MAX_SAMPLES} записей этой команды. Удали ненужный пример, чтобы записать новый."
                         )
                     existing = [
                         int(sample.stem)

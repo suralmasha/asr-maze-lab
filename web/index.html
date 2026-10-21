@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3f6fb" />
+    <title>07 · Лабиринт - Голосовой лабиринт</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="lab-config.js"></script>
+    <script defer src="configure.js"></script>
+    <script defer src="recorder.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#maze-heading">К лабиринту</a>
+    <main class="shell">
+      <header class="masthead">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">◉</div>
+          <div>
+            <p class="eyebrow">Интерактивная лаборатория ASR</p>
+            <h1>Голосовой лабиринт</h1>
+            <p class="subtitle">
+              Теперь робот слушает модель, которую ты обучил на своих записях.
+            </p>
+          </div>
+        </div>
+        <div class="lesson-chip">Этап 7 из 7</div>
+      </header>
+
+      <nav class="stage-nav" aria-label="Этапы лаборатории">
+        <a href="collect.html">01 Данные</a><a href="sound.html">02 Звук</a
+        ><a href="compare.html">03 Сравнение</a
+        ><a href="preprocess.html">04 Шумоподавление</a
+        ><a href="visualize.html">05 Признаки</a
+        ><a href="train.html">06 Обучение</a
+        ><a class="selected" aria-current="page" href="index.html"
+          >07 Лабиринт</a
+        >
+      </nav>
+      <div class="top-explainer" aria-label="Этапы обработки речи">
+        <span>Речь</span><b aria-hidden="true">→</b> <span>Классификатор</span
+        ><b aria-hidden="true">→</b> <span>Метка команды</span
+        ><b aria-hidden="true">→</b> <span>Правила</span
+        ><b aria-hidden="true">→</b>
+        <span>Действие</span>
+      </div>
+
+      <div class="workspace">
+        <section class="panel maze-panel" aria-labelledby="maze-heading">
+          <div class="panel-topline">
+            <span class="step-chip">07 · Игра</span
+            ><span class="panel-subtext">S → F</span>
+          </div>
+          <h2 id="maze-heading">Лабиринт</h2>
+          <p class="hint">
+            Проведи робота к финишу. Скажи команду, а твоя модель подскажет ему
+            направление.
+          </p>
+          <div class="maze-container">
+            <div
+              class="maze"
+              id="maze"
+              role="img"
+              aria-label="Лабиринт с роботом, стенами и финишем"
+            ></div>
+          </div>
+          <div class="legend">
+            <span><i class="legend-swatch legend-robot"></i> Робот</span>
+            <span><i class="legend-swatch legend-wall"></i> Стена</span>
+            <span><i class="legend-swatch legend-finish"></i> Финиш</span>
+          </div>
+          <div class="score-row">
+            <div class="score">
+              <span>Ходов</span><strong id="move-count">0</strong>
+            </div>
+            <div class="score">
+              <span>Команд</span><strong id="command-count">0</strong>
+            </div>
+            <button
+              class="btn btn-outline reset-btn"
+              id="reset-maze"
+              type="button"
+            >
+              ↻ Начать заново
+            </button>
+          </div>
+        </section>
+
+        <div class="side-stack">
+          <section
+            class="panel builder-panel"
+            aria-labelledby="builder-heading"
+          >
+            <div class="panel-topline">
+              <span class="step-chip">Правила игры</span
+              ><span class="panel-subtext">Команда → движение</span>
+            </div>
+            <h2 id="builder-heading">Подскажи роботу, куда идти</h2>
+            <p class="hint">
+              Мы уже добавили 4 правила. Можешь менять их: выбери, куда и на
+              сколько клеток пойдет робот после каждой команды.
+            </p>
+            <form id="rule-form" class="rule-form">
+              <label class="field-label" for="phrase">Если команда</label>
+              <input
+                id="phrase"
+                class="text-input"
+                type="text"
+                placeholder="Например, вверх"
+                maxlength="60"
+                autocomplete="off"
+                required
+              />
+              <div class="form-grid">
+                <div>
+                  <label class="field-label" for="direction">То</label>
+                  <select id="direction" class="select-input">
+                    <option value="up">↑ Идти вверх</option>
+                    <option value="down">↓ Идти вниз</option>
+                    <option value="left">← Идти влево</option>
+                    <option value="right">→ Идти вправо</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="steps">Число клеток</label>
+                  <select id="steps" class="select-input">
+                    <option value="1">1 клетка</option>
+                    <option value="2">2 клетки</option>
+                    <option value="3">3 клетки</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-primary" type="submit">
+                + Добавить правило
+              </button>
+            </form>
+            <div class="rules-title-row">
+              <h3>Правила <span id="rule-count">0</span></h3>
+              <button class="text-button" id="clear-rules" type="button">
+                Очистить
+              </button>
+            </div>
+            <div id="rule-list" class="rule-list" aria-live="polite"></div>
+          </section>
+
+          <section class="panel play-panel" aria-labelledby="play-heading">
+            <div class="panel-topline">
+              <span class="step-chip">Проверка модели</span
+              ><span class="panel-subtext">Текст или голос</span>
+            </div>
+            <h2 id="play-heading">Дай роботу команду</h2>
+            <div class="command-grid">
+              <form id="command-form" class="command-form">
+                <label class="field-label" for="command-input">Команда</label>
+                <div class="command-input-row">
+                  <input
+                    id="command-input"
+                    class="text-input"
+                    placeholder="Например, вверх"
+                    autocomplete="off"
+                    required
+                  />
+                  <button class="btn btn-secondary" type="submit">
+                    Проверить →
+                  </button>
+                </div>
+              </form>
+              <div class="or-label">или</div>
+              <button class="btn btn-voice" id="listen-btn" type="button">
+                <span id="listen-label">Произнести команду</span>
+              </button>
+            </div>
+            <div class="status-panel" role="status" aria-live="polite">
+              <span class="status-dot" id="status-dot"></span>
+              <div>
+                <strong id="status-title">Готов к командам</strong>
+                <p id="status-text">
+                  Обучи свою модель, а потом попробуй управлять роботом голосом.
+                </p>
+              </div>
+            </div>
+            <label class="setting-toggle"
+              ><input id="voice-denoise" type="checkbox" checked /><span
+                >Шумоподавление новых команд по настройкам модели</span
+              ></label
+            >
+            <p class="mic-note" id="mic-note">
+              Твоя модель выбирает команду: вверх, вниз, влево или вправо. Звук
+              остается на твоем компьютере.
+            </p>
+          </section>
+        </div>
+      </div>
+
+      <footer class="footnote">
+        <p>
+          <strong>Как это работает?</strong> Ты произносишь слово, твоя модель
+          выбирает команду, а правило подсказывает роботу, куда идти.
+        </p>
+        <p>
+          Модель сравнивает признаки MFCC с помощью k-NN. Твои примеры остаются
+          в наборе для обучения, а голосовые команды во время игры не
+          сохраняются.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

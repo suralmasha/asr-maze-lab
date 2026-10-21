@@ -21,13 +21,13 @@ const DIRECTIONS = {
 
 const STORAGE_KEY = "asr-maze-keywords-v2";
 const DEFAULT_RULES = [
-  {phrase: "вверх", direction: "up", steps: 1},
-  {phrase: "вниз", direction: "down", steps: 1},
-  {phrase: "влево", direction: "left", steps: 1},
-  {phrase: "вправо", direction: "right", steps: 1},
+  { phrase: "вверх", direction: "up", steps: 1 },
+  { phrase: "вниз", direction: "down", steps: 1 },
+  { phrase: "влево", direction: "left", steps: 1 },
+  { phrase: "вправо", direction: "right", steps: 1 },
 ];
 const $ = (id) => document.getElementById(id);
-const startY = MAP.findIndex(row => row.includes("S"));
+const startY = MAP.findIndex((row) => row.includes("S"));
 const START = { x: MAP[startY].indexOf("S"), y: startY };
 let position = { ...START };
 let moves = 0;
@@ -48,22 +48,32 @@ function normalize(value) {
 function loadRules() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === null) return DEFAULT_RULES.map(rule => ({...rule}));
+    if (stored === null) return DEFAULT_RULES.map((rule) => ({ ...rule }));
     const data = JSON.parse(stored);
     if (!Array.isArray(data)) return [];
-    return data.filter(rule =>
-      rule && typeof rule.phrase === "string" && rule.phrase.length > 0 &&
-      Object.hasOwn(DIRECTIONS, rule.direction) &&
-      Number.isInteger(rule.steps) && rule.steps >= 1 && rule.steps <= 3
-    ).slice(0, 30);
+    return data
+      .filter(
+        (rule) =>
+          rule &&
+          typeof rule.phrase === "string" &&
+          rule.phrase.length > 0 &&
+          Object.hasOwn(DIRECTIONS, rule.direction) &&
+          Number.isInteger(rule.steps) &&
+          rule.steps >= 1 &&
+          rule.steps <= 3,
+      )
+      .slice(0, 30);
   } catch {
     return [];
   }
 }
 
 function saveRules() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); }
-  catch { /* Сайт работает и при отключенном localStorage. */ }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+  } catch {
+    /* Сайт работает и при отключенном localStorage. */
+  }
 }
 
 function setStatus(title, detail, kind = "neutral") {
@@ -78,7 +88,15 @@ function renderMaze() {
   MAP.forEach((row, y) => {
     [...row].forEach((char, x) => {
       const cell = document.createElement("div");
-      cell.className = "cell " + (char === "#" ? "wall" : char === "F" ? "finish" : char === "S" ? "start" : "path");
+      cell.className =
+        "cell " +
+        (char === "#"
+          ? "wall"
+          : char === "F"
+            ? "finish"
+            : char === "S"
+              ? "start"
+              : "path");
       if (position.x === x && position.y === y) {
         const robot = document.createElement("div");
         robot.className = "robot";
@@ -95,7 +113,10 @@ function renderMaze() {
   });
   $("move-count").textContent = String(moves);
   $("command-count").textContent = String(commands);
-  container.setAttribute("aria-label", `Лабиринт. Робот в клетке ${position.x + 1}, ${position.y + 1}. ${finished ? "Финиш достигнут." : "Финиш пока не достигнут."}`);
+  container.setAttribute(
+    "aria-label",
+    `Лабиринт. Робот в клетке ${position.x + 1}, ${position.y + 1}. ${finished ? "Финиш достигнут." : "Финиш пока не достигнут."}`,
+  );
 }
 
 function renderRules() {
@@ -105,7 +126,8 @@ function renderRules() {
   if (rules.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-rules";
-    empty.textContent = "Правил пока нет. Начни с 4 направлений: «вверх», «вниз», «влево», «вправо».";
+    empty.textContent =
+      "Правил пока нет. Начни с 4 направлений: «вверх», «вниз», «влево», «вправо».";
     list.append(empty);
     return;
   }
@@ -131,7 +153,11 @@ function renderRules() {
       rules.splice(index, 1);
       saveRules();
       renderRules();
-      setStatus("Правило удалено", `Теперь фраза «${rule.phrase}» больше не управляет роботом.`, "neutral");
+      setStatus(
+        "Правило удалено",
+        `Теперь фраза «${rule.phrase}» больше не управляет роботом.`,
+        "neutral",
+      );
     });
     card.append(ifTag, word, effect, remove);
     list.append(card);
@@ -144,13 +170,26 @@ $("rule-form").addEventListener("submit", (event) => {
   const phrase = normalize($("phrase").value);
   const direction = $("direction").value;
   const steps = Number($("steps").value);
-  if (!phrase || !Object.hasOwn(DIRECTIONS, direction) || ![1, 2, 3].includes(steps)) return;
-  if (rules.some(rule => rule.phrase === phrase)) {
-    setStatus("Такая фраза уже есть", "Удали старое правило или придумай другое название команды.", "warning");
+  if (
+    !phrase ||
+    !Object.hasOwn(DIRECTIONS, direction) ||
+    ![1, 2, 3].includes(steps)
+  )
+    return;
+  if (rules.some((rule) => rule.phrase === phrase)) {
+    setStatus(
+      "Такая фраза уже есть",
+      "Удали старое правило или придумай другое название команды.",
+      "warning",
+    );
     return;
   }
   if (rules.length >= 30) {
-    setStatus("Слишком много правил", "У тебя уже 30 правил. Удали ненужное, чтобы добавить новое.", "warning");
+    setStatus(
+      "Слишком много правил",
+      "У тебя уже 30 правил. Удали ненужное, чтобы добавить новое.",
+      "warning",
+    );
     return;
   }
   rules.push({ phrase, direction, steps });
@@ -158,12 +197,19 @@ $("rule-form").addEventListener("submit", (event) => {
   renderRules();
   $("phrase").value = "";
   $("phrase").focus();
-  setStatus("Новое правило добавлено", `Команда «${phrase}»: направление ${DIRECTIONS[direction].name}, шагов: ${steps}.`, "success");
+  setStatus(
+    "Новое правило добавлено",
+    `Команда «${phrase}»: направление ${DIRECTIONS[direction].name}, шагов: ${steps}.`,
+    "success",
+  );
 });
 
 $("clear-rules").addEventListener("click", () => {
   if (rules.length === 0) return;
-  if (!window.confirm("Удалить все твои правила? Робот останется на своем месте.")) return;
+  if (
+    !window.confirm("Удалить все твои правила? Робот останется на своем месте.")
+  )
+    return;
   rules = [];
   saveRules();
   renderRules();
@@ -176,7 +222,7 @@ function findRule(text) {
   const padded = ` ${normalize(text)} `;
   return [...rules]
     .sort((a, b) => b.phrase.length - a.phrase.length)
-    .find(rule => padded.includes(` ${rule.phrase} `));
+    .find((rule) => padded.includes(` ${rule.phrase} `));
 }
 
 function executeCommand(spokenText) {
@@ -188,13 +234,21 @@ function executeCommand(spokenText) {
   commands++;
   if (finished) {
     renderMaze();
-    setStatus("Финиш уже достигнут!", "Нажми «Начать заново», чтобы пройти лабиринт еще раз.", "success");
+    setStatus(
+      "Финиш уже достигнут!",
+      "Нажми «Начать заново», чтобы пройти лабиринт еще раз.",
+      "success",
+    );
     return;
   }
   const rule = findRule(text);
   if (!rule) {
     renderMaze();
-    setStatus("Команда не найдена", `Для команды «${spokenText}» пока нет правила. Добавь его или попробуй другую команду.`, "warning");
+    setStatus(
+      "Команда не найдена",
+      `Для команды «${spokenText}» пока нет правила. Добавь его или попробуй другую команду.`,
+      "warning",
+    );
     return;
   }
   const direction = DIRECTIONS[rule.direction];
@@ -206,15 +260,30 @@ function executeCommand(spokenText) {
     position = { x: nextX, y: nextY };
     moves++;
     actualSteps++;
-    if (MAP[nextY][nextX] === "F") { finished = true; break; }
+    if (MAP[nextY][nextX] === "F") {
+      finished = true;
+      break;
+    }
   }
   renderMaze();
   if (finished) {
-    setStatus("Победа! Робот нашел финиш!", `Последняя команда: «${spokenText}». Всего ходов: ${moves}, команд: ${commands}.`, "success");
+    setStatus(
+      "Победа! Робот нашел финиш!",
+      `Последняя команда: «${spokenText}». Всего ходов: ${moves}, команд: ${commands}.`,
+      "success",
+    );
   } else if (!actualSteps) {
-    setStatus("Перед роботом стена", `Робот понял «${spokenText}», но ${direction.name} путь закрыт. Попробуй другое направление.`, "warning");
+    setStatus(
+      "Перед роботом стена",
+      `Робот понял «${spokenText}», но ${direction.name} путь закрыт. Попробуй другое направление.`,
+      "warning",
+    );
   } else {
-    setStatus("Команда выполнена", `Твоя команда: «${spokenText}». Робот пошел ${direction.name}. Шагов: ${actualSteps}.`, "success");
+    setStatus(
+      "Команда выполнена",
+      `Твоя команда: «${spokenText}». Робот пошел ${direction.name}. Шагов: ${actualSteps}.`,
+      "success",
+    );
   }
 }
 
@@ -230,7 +299,10 @@ $("reset-maze").addEventListener("click", () => {
   commands = 0;
   finished = false;
   renderMaze();
-  setStatus("Лабиринт сброшен", "Правила остались: попробуй пройти путь заново.");
+  setStatus(
+    "Лабиринт сброшен",
+    "Правила остались: попробуй пройти путь заново.",
+  );
 });
 
 // # 5. Мы НЕ используем готовый speech-to-text ASR.
@@ -249,21 +321,29 @@ function setMicButton(label, recording = false, disabled = false) {
 
 async function checkServer() {
   try {
-    const response = await fetch("/api/health", {cache: "no-store"});
+    const response = await fetch("/api/health", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (data.ready) {
-      $("mic-note").textContent = "Твоя модель готова. Нажми кнопку и скажи «вверх», «вниз», «влево» или «вправо».";
+      $("mic-note").textContent =
+        "Твоя модель готова. Нажми кнопку и скажи «вверх», «вниз», «влево» или «вправо».";
       setMicButton("● Произнести слово");
     } else {
       setMicButton("Модель еще не обучена", false, true);
-      $("mic-note").textContent = data.message || "Перейди на этап 06 «Обучение» и нажми «Обучить модель». Потом возвращайся играть.";
+      $("mic-note").textContent =
+        data.message ||
+        "Перейди на этап 06 «Обучение» и нажми «Обучить модель». Потом возвращайся играть.";
       setStatus("Нет обученной модели", $("mic-note").textContent, "warning");
     }
-  } catch(e) {
+  } catch {
     setMicButton("Нужен локальный сервер", false, true);
-    $("mic-note").textContent = "Похоже, сервер остановлен. Запусти его командой make server и обнови страницу.";
-    setStatus("Не удалось соединиться с сервером", $("mic-note").textContent, "error");
+    $("mic-note").textContent =
+      "Похоже, сервер остановлен. Запусти его командой make server и обнови страницу.";
+    setStatus(
+      "Не удалось соединиться с сервером",
+      $("mic-note").textContent,
+      "error",
+    );
   }
 }
 
@@ -273,27 +353,48 @@ async function micToggle() {
   if (!voiceRecorder.isRecording) {
     setMicButton("Включаю микрофон…", false, true);
     try {
-      await voiceRecorder.start({maxSeconds: 5, onLimit: () => { if(voiceRecorder.isRecording) void micToggle(); }});
+      await voiceRecorder.start({
+        maxSeconds: labConfig.audio.max_seconds,
+        onLimit: () => {
+          if (voiceRecorder.isRecording) void micToggle();
+        },
+      });
       setMicButton("■ Остановить и распознать", true);
-      setStatus("Идет запись", "Скажи «вверх», «вниз», «влево» или «вправо». Затем нажми «Остановить и распознать».");
-    } catch(e) {
-      setStatus("Не получилось включить микрофон", `Проверь доступ к нему в браузере и попробуй еще раз. ${e.message || String(e)}`, "error");
+      setStatus(
+        "Идет запись",
+        "Скажи «вверх», «вниз», «влево» или «вправо». Затем нажми «Остановить и распознать».",
+      );
+    } catch (e) {
+      setStatus(
+        "Не получилось включить микрофон",
+        `Проверь доступ к нему в браузере и попробуй еще раз. ${e.message || String(e)}`,
+        "error",
+      );
       setMicButton("● Произнести слово");
-    } finally { busyMic = false; }
+    } finally {
+      busyMic = false;
+    }
     return;
   }
   setMicButton("Ищу похожую команду…", false, true);
   try {
     const wav = await voiceRecorder.stop();
-    const response = await fetch(`/api/predict?denoise=${$("voice-denoise").checked}`, {
-      method: "POST", headers: {"Content-Type": "audio/wav"}, body: wav,
-    });
+    const response = await fetch(
+      `/api/predict?denoise=${$("voice-denoise").checked}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "audio/wav" },
+        body: wav,
+      },
+    );
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || `Ошибка ${response.status}`);
+    if (!response.ok)
+      throw new Error(result.error || `Ошибка ${response.status}`);
     $("command-input").value = result.text;
     executeCommand(result.text);
-    $("mic-note").textContent = `Твоя модель выбрала «${result.text}». Расстояния до похожих примеров: ${result.neighbor_distances.join(", ")}. Чем меньше число, тем ближе запись к твоей.`;
-  } catch(e) {
+    $("mic-note").textContent =
+      `Твоя модель выбрала «${result.text}». Расстояния до похожих примеров: ${result.neighbor_distances.join(", ")}. Чем меньше число, тем ближе запись к твоей.`;
+  } catch (e) {
     setStatus("Не получилось узнать команду", e.message || String(e), "error");
   } finally {
     busyMic = false;
@@ -301,7 +402,9 @@ async function micToggle() {
   }
 }
 
-listenButton.addEventListener("click", () => {void micToggle();});
+listenButton.addEventListener("click", () => {
+  void micToggle();
+});
 
 renderRules();
 renderMaze();

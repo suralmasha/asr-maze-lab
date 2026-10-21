@@ -1,0 +1,43 @@
+{
+  "cache_max_bytes": 400000000,
+  "audio": {
+    "min_samples": 5,
+    "max_samples": 50,
+    "min_seconds": 0.4,
+    "max_seconds": 5,
+    "validation_max_seconds": 5.5,
+    "max_bytes": 200000
+  },
+  "feature_scales": {
+    "n_mels": [8, 16, 32, 64, 128],
+    "n_mfcc": [4, 8, 13, 20, 32],
+    "n_fft": [256, 512, 1024, 2048],
+    "hop_length": [64, 128, 256, 512]
+  },
+  "limits": {
+    "n_mels": [8, 128],
+    "n_mfcc": [2, 40],
+    "k": [1, 15],
+    "noise": [0, 0.1],
+    "denoise_strength": [0, 2]
+  },
+  "preprocessing": {
+    "strength_step": 0.1,
+    "preview_strength": 1
+  },
+  "noise_levels": [0, 0.03, 0.08],
+  "defaults": {
+    "n_mels": 32,
+    "n_mfcc": 13,
+    "n_fft": 512,
+    "hop_length": null,
+    "denoise_strength": 0,
+    "denoise_n_fft": 512,
+    "normalize": true,
+    "metric": "euclidean",
+    "weights": "distance",
+    "k": 3,
+    "trim_silence": true,
+    "noise": 0
+  }
+}

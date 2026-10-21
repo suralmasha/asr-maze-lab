@@ -6,22 +6,13 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
-MIN_SAMPLES = 5
-MAX_SAMPLES = 50
+from lab_config import CONFIG
+
+MIN_SAMPLES = CONFIG["audio"]["min_samples"]
+MAX_SAMPLES = CONFIG["audio"]["max_samples"]
 DEFAULT_SETTINGS: dict[str, Any] = {
-    "n_mels": 32,
-    "n_mfcc": 13,
-    "n_fft": 512,
-    "hop_length": None,
-    "denoise_strength": 0.0,
-    "denoise_n_fft": 512,
-    "normalize": True,
-    "metric": "euclidean",
-    "weights": "distance",
-    "k": 3,
+    **CONFIG["defaults"],
     "samples_per_class": MAX_SAMPLES,
-    "trim_silence": True,
-    "noise": 0.0,
 }
 
 
@@ -73,35 +64,34 @@ def validate_settings(values: Mapping[str, Any] | None = None) -> dict[str, Any]
         **DEFAULT_SETTINGS,
         **{key: value for key, value in supplied.items() if key in DEFAULT_SETTINGS},
     }
-    settings["n_mels"] = _integer(settings["n_mels"], "n_mels", 8, 128)
+    settings["n_mels"] = _integer(
+        settings["n_mels"], "n_mels", *CONFIG["limits"]["n_mels"]
+    )
     if "n_mfcc" not in supplied:
         settings["n_mfcc"] = min(settings["n_mfcc"], settings["n_mels"])
     settings["n_mfcc"] = _integer(
-        settings["n_mfcc"], "n_mfcc", 2, min(40, settings["n_mels"])
+        settings["n_mfcc"],
+        "n_mfcc",
+        CONFIG["limits"]["n_mfcc"][0],
+        min(CONFIG["limits"]["n_mfcc"][1], settings["n_mels"]),
     )
-    settings["n_fft"] = _integer(settings["n_fft"], "n_fft", 256, 2048)
-    if settings["n_fft"] not in (256, 512, 1024, 2048):
-        raise ValueError("n_fft: допустимы 256, 512, 1024 или 2048.")
+    fft_values = CONFIG["feature_scales"]["n_fft"]
+    settings["n_fft"] = _integer(
+        settings["n_fft"], "n_fft", min(fft_values), max(fft_values)
+    )
+    if settings["n_fft"] not in fft_values:
+        raise ValueError(f"n_fft: допустимы {', '.join(map(str, fft_values))}.")
     if settings["hop_length"] is None:
         settings["hop_length"] = settings["n_fft"] // 4
     settings["hop_length"] = _integer(
         settings["hop_length"], "hop_length", 1, settings["n_fft"]
     )
     settings["denoise_n_fft"] = _integer(
-        settings["denoise_n_fft"], "denoise_n_fft", 256, 2048
+        settings["denoise_n_fft"], "denoise_n_fft", min(fft_values), max(fft_values)
     )
-    if settings["denoise_n_fft"] not in (256, 512, 1024, 2048):
-        raise ValueError("denoise_n_fft: допустимы 256, 512, 1024 или 2048.")
-    try:
-        settings["denoise_strength"] = float(settings["denoise_strength"])
-    except (TypeError, ValueError) as exc:
-        raise ValueError("denoise_strength: требуется число от 0 до 2.") from exc
-    if (
-        not math.isfinite(settings["denoise_strength"])
-        or not 0 <= settings["denoise_strength"] <= 2
-    ):
-        raise ValueError("denoise_strength: требуется число от 0 до 2.")
-    settings["k"] = _integer(settings["k"], "k", 1, 15)
+    if settings["denoise_n_fft"] not in fft_values:
+        raise ValueError(f"denoise_n_fft: допустимы {', '.join(map(str, fft_values))}.")
+    settings["k"] = _integer(settings["k"], "k", *CONFIG["limits"]["k"])
     settings["samples_per_class"] = _integer(
         settings["samples_per_class"], "samples_per_class", MIN_SAMPLES, MAX_SAMPLES
     )
@@ -111,10 +101,16 @@ def validate_settings(values: Mapping[str, Any] | None = None) -> dict[str, Any]
         raise ValueError("metric: требуется euclidean или manhattan.")
     if settings["weights"] not in ("uniform", "distance"):
         raise ValueError("weights: требуется uniform или distance.")
-    try:
-        settings["noise"] = float(settings["noise"])
-    except (TypeError, ValueError) as exc:
-        raise ValueError("noise: требуется число от 0 до 0.1.") from exc
-    if not math.isfinite(settings["noise"]) or not 0 <= settings["noise"] <= 0.1:
-        raise ValueError("noise: требуется число от 0 до 0.1.")
+    for name in ("denoise_strength", "noise"):
+        minimum, maximum = CONFIG["limits"][name]
+        message = f"{name}: требуется число от {minimum:g} до {maximum:g}."
+        try:
+            settings[name] = float(settings[name])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(message) from exc
+        if (
+            not math.isfinite(settings[name])
+            or not minimum <= settings[name] <= maximum
+        ):
+            raise ValueError(message)
     return settings

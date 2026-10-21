@@ -48,7 +48,7 @@ class TrainingManager:
             "completed": 0,
             "total": 0,
             "percent": 0,
-            "message": "Запиши хотя бы по 5 примеров каждой команды и нажми «Обучить модель».",
+            "message": f"Запиши хотя бы по {MIN_SAMPLES} примеров каждой команды и нажми «Обучить модель».",
         }
         self.last_vector: np.ndarray | None = None
         self.history: ModelHistory | None = None
@@ -173,7 +173,7 @@ class TrainingManager:
             }
             if min(counts.values(), default=0) < MIN_SAMPLES:
                 raise ValueError(
-                    "Добавь хотя бы по 5 записей каждой команды. Сейчас у тебя: "
+                    f"Добавь хотя бы по {MIN_SAMPLES} записей каждой команды. Сейчас у тебя: "
                     + ", ".join(
                         f"{LABELS[label]}: {count}" for label, count in counts.items()
                     )

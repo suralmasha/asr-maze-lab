@@ -27,6 +27,7 @@ from features import (
     suppress_noise,
     trim_silence,
 )
+from lab_config import CONFIG
 
 FEATURE_KEYS = (
     "n_mels",
@@ -266,18 +267,26 @@ class ExperimentRuntime:
             if path != selected
         ]
         seen: set[str] = set()
+        scales = CONFIG["feature_scales"]
+        strength_minimum, strength_maximum = CONFIG["limits"]["denoise_strength"]
+        strength_step = CONFIG["preprocessing"]["strength_step"]
+        strength_count = (
+            int((strength_maximum - strength_minimum) / strength_step + 1e-9) + 1
+        )
         for path in paths:
             variants = [base]
             if page == "preprocess":
                 variants.extend(
                     {
                         **base,
-                        "denoise_strength": strength / 10,
+                        "denoise_strength": round(
+                            strength_minimum + strength * strength_step, 12
+                        ),
                         "denoise_n_fft": fft,
                         "trim_silence": trim,
                     }
-                    for fft in (256, 512, 1024, 2048)
-                    for strength in range(21)
+                    for fft in scales["n_fft"]
+                    for strength in range(strength_count)
                     for trim in (base["trim_silence"], not base["trim_silence"])
                 )
             else:
@@ -289,11 +298,11 @@ class ExperimentRuntime:
                         "n_mels": mel,
                         "n_mfcc": mfcc,
                     }
-                    for fft in (256, 512, 1024, 2048)
-                    for hop in (64, 128, 256, 512)
+                    for fft in scales["n_fft"]
+                    for hop in scales["hop_length"]
                     if hop <= fft
-                    for mel in (8, 16, 32, 64, 128)
-                    for mfcc in (4, 8, 13, 20, 32)
+                    for mel in scales["n_mels"]
+                    for mfcc in scales["n_mfcc"]
                     if mfcc <= mel
                 )
             for options in variants:
@@ -344,7 +353,7 @@ class ExperimentRuntime:
             return {
                 "enabled": False,
                 "bytes": 0,
-                "limit": 400_000_000,
+                "limit": CONFIG["cache_max_bytes"],
                 "state": "idle",
                 "completed": 0,
                 "total": 0,

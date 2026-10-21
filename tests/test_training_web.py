@@ -27,6 +27,7 @@ from features import (
     representation_with_settings,
     suppress_noise,
 )
+from lab_config import CONFIG
 from trainer import (
     model_features,
     portable_predict,
@@ -58,6 +59,16 @@ def tone(freq: float) -> bytes:
 
 class TestWebTraining(unittest.TestCase):
     """Проверяет HTTP-контракт на отдельном временном датасете."""
+
+    def test_browser_configuration(self) -> None:
+        """Передает браузеру общий конфиг и загрузчик элементов управления."""
+        status, script = self.request("/lab-config.js")
+        self.assertEqual(status, 200)
+        payload = script.decode().removeprefix("const labConfig = ").strip()
+        self.assertEqual(json.loads(payload.removesuffix(";")), CONFIG)
+        status, script = self.request("/configure.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"labConfig.defaults", script)
 
     def setUp(self) -> None:
         """Запускает изолированный сервер на свободном порту."""

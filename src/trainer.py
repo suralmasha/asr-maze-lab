@@ -17,14 +17,22 @@ from sklearn.preprocessing import StandardScaler
 from tqdm.auto import tqdm
 
 from experiment_settings import MAX_SAMPLES, MIN_SAMPLES, validate_settings
-from features import LABELS, extract_features, extract_features_with_settings, load_wav
+from features import (
+    LABELS,
+    N_FFT,
+    N_MELS,
+    N_MFCC,
+    extract_features,
+    extract_features_with_settings,
+    load_wav,
+)
 
 
 def load_dataset(
     directory: Path, show_progress: bool = True
 ) -> tuple[np.ndarray, np.ndarray, list[Path]]:
     """
-    Загружает от 5 до 50 записей каждой команды.
+    Загружает записи каждой команды в пределах конфигурации лаборатории.
 
     :param directory: Корневой каталог датасета.
     :param show_progress: Отображение прогресса в терминале.
@@ -41,7 +49,7 @@ def load_dataset(
     }
     if min(by_class.values()) < MIN_SAMPLES:
         raise ValueError(
-            "Нужно минимум 5 WAV-файлов для каждой команды. Сейчас: " + str(by_class)
+            f"Нужно минимум {MIN_SAMPLES} WAV-файлов для каждой команды. Сейчас: {by_class}"
         )
     iterator = tqdm(
         pairs,
@@ -160,6 +168,23 @@ def model_settings(model: dict[str, Any]) -> dict[str, Any]:
     :param model: Числовые данные NPZ.
     :return: Проверенные параметры модели.
     """
+    if int(model["feature_version"]) == 1:
+        # Метаданные версии 1 сохраняют исторические значения независимо от JSON.
+        return {
+            "n_mels": N_MELS,
+            "n_mfcc": N_MFCC,
+            "n_fft": N_FFT,
+            "hop_length": N_FFT // 4,
+            "denoise_strength": 0.0,
+            "denoise_n_fft": N_FFT,
+            "normalize": True,
+            "metric": "euclidean",
+            "weights": "distance",
+            "k": int(model["k"]),
+            "samples_per_class": 50,
+            "trim_silence": True,
+            "noise": 0.0,
+        }
     supplied = (
         json.loads(str(model["settings_json"])) if "settings_json" in model else {}
     )

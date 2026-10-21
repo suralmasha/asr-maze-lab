@@ -7,12 +7,17 @@ import wave
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import matplotlib
 import numpy as np
 from scipy.fft import dct
 from scipy.ndimage import uniform_filter1d
 from scipy.signal import istft, stft
 
 from experiment_settings import validate_settings
+from lab_config import CONFIG
+
+# Графики сохраняются в файлы; оконный backend macOS может завершить процесс.
+matplotlib.use("Agg")
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -42,9 +47,14 @@ def load_wav(data: bytes | Path | str) -> np.ndarray:
             frames = recording.getnframes()
             if (channels, width, rate, encoding) != (1, 2, SAMPLE_RATE, "NONE"):
                 raise ValueError("Нужен WAV PCM 16-bit, mono, 16000 Гц.")
-            if not int(0.4 * rate) <= frames <= int(5.5 * rate):
+            audio = CONFIG["audio"]
+            if (
+                not int(audio["min_seconds"] * rate)
+                <= frames
+                <= int(audio["validation_max_seconds"] * rate)
+            ):
                 raise ValueError(
-                    "Запиши слово длиной от 0,4 до 5 секунд и попробуй еще раз."
+                    f"Запиши слово длиной от {audio['min_seconds']:g} до {audio['max_seconds']:g} секунд и попробуй еще раз."
                 )
             raw = recording.readframes(frames)
     except (wave.Error, EOFError) as exc:
@@ -144,8 +154,12 @@ def _representation(
     :param legacy: Сохранение исходного окна 400 и шага 160 отсчетов.
     :return: Волна, спектры и коэффициенты MFCC.
     """
-    samples = suppress_noise(
-        wav, settings["denoise_strength"], settings["denoise_n_fft"]
+    samples = (
+        wav.copy()
+        if legacy
+        else suppress_noise(
+            wav, settings["denoise_strength"], settings["denoise_n_fft"]
+        )
     )
     if settings["trim_silence"]:
         samples = trim_silence(samples)
@@ -186,7 +200,17 @@ def representation(wav: np.ndarray) -> dict:
     :param wav: Исходные отсчеты.
     :return: Волна, спектры и 13 коэффициентов MFCC.
     """
-    return _representation(wav, validate_settings(), legacy=True)
+    # Признаки версии 1 не зависят от изменяемых настроек новых экспериментов.
+    settings = {
+        "n_fft": N_FFT,
+        "n_mels": N_MELS,
+        "n_mfcc": N_MFCC,
+        "hop_length": 160,
+        "denoise_strength": 0,
+        "denoise_n_fft": N_FFT,
+        "trim_silence": True,
+    }
+    return _representation(wav, settings, legacy=True)
 
 
 def representation_with_settings(
@@ -530,14 +554,18 @@ def suppress_noise(
     Подавляет стационарный шум мягким спектральным фильтром.
 
     :param wav: Исходные отсчеты.
-    :param strength: Сила подавления от 0 до 2.
+    :param strength: Сила подавления в диапазоне конфигурации лаборатории.
     :param n_fft: Размер окна преобразования Фурье.
     :return: Обработанные отсчеты исходной длины.
     """
-    if not np.isfinite(strength) or not 0 <= strength <= 2:
-        raise ValueError("Сила шумоподавления должна быть от 0 до 2.")
-    if n_fft not in (256, 512, 1024, 2048):
-        raise ValueError("n_fft: допустимы 256, 512, 1024 или 2048.")
+    minimum, maximum = CONFIG["limits"]["denoise_strength"]
+    if not np.isfinite(strength) or not minimum <= strength <= maximum:
+        raise ValueError(
+            f"Сила шумоподавления должна быть от {minimum:g} до {maximum:g}."
+        )
+    fft_values = CONFIG["feature_scales"]["n_fft"]
+    if n_fft not in fft_values:
+        raise ValueError(f"n_fft: допустимы {', '.join(map(str, fft_values))}.")
     if strength == 0:
         return wav.copy()
     _, _, spectrum = stft(wav, fs=SAMPLE_RATE, nperseg=n_fft, noverlap=3 * n_fft // 4)

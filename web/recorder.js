@@ -4,12 +4,18 @@
 
 function pcmWavFromChunks(chunks, sampleRate) {
   const total = chunks.reduce((s, x) => s + x.length, 0);
-  if (!total) throw new Error("Не удалось записать звук. Попробуй включить микрофон еще раз.");
+  if (!total)
+    throw new Error(
+      "Не удалось записать звук. Попробуй включить микрофон еще раз.",
+    );
   const raw = new Float32Array(total);
   let cursor = 0;
-  for (const chunk of chunks) { raw.set(chunk, cursor); cursor += chunk.length; }
+  for (const chunk of chunks) {
+    raw.set(chunk, cursor);
+    cursor += chunk.length;
+  }
   const rate = 16000;
-  const outputLength = Math.floor(raw.length * rate / sampleRate);
+  const outputLength = Math.floor((raw.length * rate) / sampleRate);
   const values = new Int16Array(outputLength);
   const ratio = sampleRate / rate;
   for (let i = 0; i < outputLength; i++) {
@@ -17,7 +23,10 @@ function pcmWavFromChunks(chunks, sampleRate) {
     let value = 0;
     if (ratio >= 1) {
       const a = Math.floor(start);
-      const b = Math.min(raw.length, Math.max(a + 1, Math.floor((i + 1) * ratio)));
+      const b = Math.min(
+        raw.length,
+        Math.max(a + 1, Math.floor((i + 1) * ratio)),
+      );
       for (let j = a; j < b; j++) value += raw[j];
       value /= b - a;
     } else {
@@ -31,28 +40,59 @@ function pcmWavFromChunks(chunks, sampleRate) {
   }
   const buffer = new ArrayBuffer(44 + values.byteLength);
   const view = new DataView(buffer);
-  const text = (offset, s) => { for (let j = 0; j < s.length; j++) view.setUint8(offset+j, s.charCodeAt(j)); };
-  text(0, "RIFF"); view.setUint32(4, 36 + values.byteLength, true); text(8, "WAVE");
-  text(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true); view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
-  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
-  text(36, "data"); view.setUint32(40, values.byteLength, true);
-  for (let i = 0; i < values.length; i++) view.setInt16(44 + 2*i, values[i], true);
+  const text = (offset, s) => {
+    for (let j = 0; j < s.length; j++)
+      view.setUint8(offset + j, s.charCodeAt(j));
+  };
+  text(0, "RIFF");
+  view.setUint32(4, 36 + values.byteLength, true);
+  text(8, "WAVE");
+  text(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, "data");
+  view.setUint32(40, values.byteLength, true);
+  for (let i = 0; i < values.length; i++)
+    view.setInt16(44 + 2 * i, values[i], true);
   return new Blob([buffer], { type: "audio/wav" });
 }
 
 class VoiceRecorder {
-  constructor() { this.active = null; this.starting = false; }
-  get isRecording() { return !!this.active; }
+  constructor() {
+    this.active = null;
+    this.starting = false;
+  }
+  get isRecording() {
+    return !!this.active;
+  }
 
-  async start({ maxSeconds = 5, onLimit = () => {} } = {}) {
-    if (this.active || this.starting) throw new Error("Ты уже записываешь звук. Сначала останови текущую запись.");
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error("Открой лабораторию через http://localhost:8000 и разреши браузеру доступ к микрофону.");
+  async start({
+    maxSeconds = labConfig.audio.max_seconds,
+    onLimit = () => {},
+  } = {}) {
+    if (this.active || this.starting)
+      throw new Error(
+        "Ты уже записываешь звук. Сначала останови текущую запись.",
+      );
+    if (!navigator.mediaDevices?.getUserMedia)
+      throw new Error(
+        "Открой лабораторию через http://localhost:8000 и разреши браузеру доступ к микрофону.",
+      );
     this.starting = true;
     let stream, context;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false,
+        },
       });
       context = new (window.AudioContext || window.webkitAudioContext)();
       await context.resume();
@@ -60,13 +100,25 @@ class VoiceRecorder {
       const processor = context.createScriptProcessor(4096, 1, 1);
       const muted = context.createGain();
       muted.gain.value = 0;
-      const session = { stream, context, source, processor, muted, chunks: [], count: 0, limitCalled: false };
+      const session = {
+        stream,
+        context,
+        source,
+        processor,
+        muted,
+        chunks: [],
+        count: 0,
+        limitCalled: false,
+      };
       processor.onaudioprocess = (e) => {
         if (this.active !== session) return;
         const chunk = new Float32Array(e.inputBuffer.getChannelData(0));
         session.chunks.push(chunk);
         session.count += chunk.length;
-        if (!session.limitCalled && session.count >= maxSeconds * context.sampleRate) {
+        if (
+          !session.limitCalled &&
+          session.count >= maxSeconds * context.sampleRate
+        ) {
           session.limitCalled = true;
           queueMicrotask(onLimit);
         }
@@ -76,10 +128,12 @@ class VoiceRecorder {
       muted.connect(context.destination);
       this.active = session;
     } catch (err) {
-      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (stream) stream.getTracks().forEach((track) => track.stop());
       if (context) await context.close().catch(() => {});
       throw err;
-    } finally { this.starting = false; }
+    } finally {
+      this.starting = false;
+    }
   }
 
   async stop() {
@@ -87,8 +141,10 @@ class VoiceRecorder {
     if (!s) throw new Error("Сначала нажми кнопку записи и произнеси команду.");
     this.active = null;
     s.processor.onaudioprocess = null;
-    s.source.disconnect(); s.processor.disconnect(); s.muted.disconnect();
-    s.stream.getTracks().forEach(track => track.stop());
+    s.source.disconnect();
+    s.processor.disconnect();
+    s.muted.disconnect();
+    s.stream.getTracks().forEach((track) => track.stop());
     await s.context.close().catch(() => {});
     return pcmWavFromChunks(s.chunks, s.context.sampleRate);
   }
