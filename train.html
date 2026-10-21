@@ -22,7 +22,6 @@
         <div class="experiment-controls">
           <label class="control-field" for="metric">Как считаем похожесть<select id="metric"><option value="euclidean">Евклидово расстояние</option><option value="manhattan">Манхэттенское расстояние</option></select><small class="control-help">Попробуй 2 способа: евклидово расстояние измеряет прямой путь между точками, манхэттенское складывает различия по каждой координате.</small></label>
           <label class="control-field" for="weights">Как голосуют соседи<select id="weights"><option value="distance" selected>Ближайшие голосуют сильнее</option><option value="uniform">У всех равные голоса</option></select><small class="control-help">Выбери, будут ли все похожие примеры голосовать поровну или ближайшие сильнее повлияют на ответ.</small></label>
-          <label class="control-field" for="trim-silence">Удаление тишины<select id="trim-silence" aria-describedby="trim-help"><option value="true" selected>Удаляем паузы по краям</option><option value="false">Оставляем паузы</option></select><small id="trim-help" class="control-help">Проверь, легче ли модели узнавать команды без пауз в начале и конце записи.</small></label>
           <label class="control-field" for="noise">Добавление шума<select id="noise" aria-describedby="noise-help"><option value="0" selected>Оставляем без шума</option><option value="0.03">Добавляем слабый шум - 3%</option><option value="0.08">Добавляем сильный шум - 8%</option></select><small id="noise-help" class="control-help">Станет ли модель устойчивее? Для каждой записи создадим 1 шумовую копию после шумоподавления. Уровень шума задан относительно громкости записи.</small></label>
         </div>
         <div class="settings-toggles"><label class="setting-toggle"><input id="normalize" type="checkbox" checked><span><strong>Нормализация признаков</strong><small>Приведем признаки к общему масштабу, чтобы большие числа не заглушали остальные. Попробуй обучение с этой настройкой и без нее.</small></span></label></div>
@@ -32,6 +31,12 @@
     <button class="action train-start" type="button" id="train-button" disabled>Обучить модель</button>
     <div class="train-progress" aria-label="Прогресс обучения"><div class="progress-head"><strong id="progress-stage">Сначала обучи свою модель</strong><span id="progress-percent">0%</span></div><progress id="progress" value="0" max="100"></progress><p id="train-message" role="status" aria-live="polite">Проверяю, готова ли твоя модель…</p></div>
     <p id="model-settings" class="train-muted"></p>
+  </section>
+  <section class="train-card" id="model-history" aria-labelledby="history-heading" hidden>
+    <h2 id="history-heading">Сохраненные модели</h2>
+    <label class="control-field" for="model-select">Эксперимент<select id="model-select"></select></label>
+    <div class="history-actions"><button class="action" id="select-model" type="button">Использовать модель</button><button class="action secondary" id="delete-model" type="button">Удалить выбранную</button><button class="action secondary" id="clear-models" type="button">Удалить все модели</button></div>
+    <p id="history-status" class="control-help" role="status" aria-live="polite"></p>
   </section>
   <section class="train-card" aria-labelledby="pca-heading">
     <h2 id="pca-heading">2. Как модель видит записи?</h2>
@@ -44,6 +49,7 @@
   <section class="train-card" aria-labelledby="test-heading">
     <h2 id="test-heading">3. Проверь на новой записи</h2>
     <p class="train-muted">Скажи «вверх», «вниз», «влево» или «вправо» и посмотри, что выберет модель. Ниже ты увидишь похожие примеры. Эта проверочная запись не попадет в твой набор для обучения.</p>
+    <label class="setting-toggle"><input id="probe-denoise" type="checkbox" checked><span>Шумоподавление новых команд по настройкам модели</span></label>
     <button id="probe-button" class="action train-start" type="button" disabled>Произнести команду</button>
     <p id="probe-status" class="train-muted" role="status" aria-live="polite">Сначала нажми «Обучить модель». Потом можно будет проверить новую команду.</p>
     <div id="probe-result" class="probe-result" hidden><p class="predicted">Модель выбрала: <strong id="predicted"></strong></p><h3 id="neighbors-heading">Ближайшие записи</h3><div id="neighbors" class="neighbor-list"></div><p class="train-muted">Чем меньше расстояние, тем больше похожи записи. Ищи свою новую команду на карте: она отмечена звездой.</p></div>

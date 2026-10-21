@@ -10,7 +10,7 @@ let redrawTimer = null;
 let requestNumber = 0;
 let activeController = null;
 let imageUrls = [];
-const preprocessing = audioSettings.loadPreprocessing() || {denoise_strength: 0, denoise_n_fft: 512};
+let preprocessing = null;
 const sliderIds = {n_mels: "n-mels", n_mfcc: "n-mfcc", n_fft: "n-fft", hop_length: "hop-length"};
 
 function readSettings() {
@@ -45,6 +45,7 @@ function showSettingsStatus(applied) {
 }
 
 async function redraw() {
+  if (!preprocessing) return;
   const request = ++requestNumber;
   activeController?.abort();
   plotStatus.hidden = false;
@@ -56,11 +57,11 @@ async function redraw() {
     audio.removeAttribute("src"); audio.load(); return;
   }
   const sampleParams = new URLSearchParams({label: labelInput.value, file: filename});
-  const nextAudio = preprocessing.denoise_strength > 0
-    ? `/api/preprocess/audio?${sampleParams}&strength=${preprocessing.denoise_strength}&n_fft=${preprocessing.denoise_n_fft}`
+  const nextAudio = preprocessing.denoise_strength > 0 || preprocessing.trim_silence
+    ? `/api/preprocess/audio?${sampleParams}&strength=${preprocessing.denoise_strength}&n_fft=${preprocessing.denoise_n_fft}&trim_silence=${preprocessing.trim_silence}`
     : `/api/audio?${sampleParams}`;
   if (audio.getAttribute("src") !== nextAudio) {audio.src = nextAudio; audio.load();}
-  for (const [key, value] of Object.entries({...readSettings(), ...preprocessing, trim_silence: false})) sampleParams.set(key, value);
+  for (const [key, value] of Object.entries({...readSettings(), ...preprocessing})) sampleParams.set(key, value);
   plotStatus.textContent = "Рисую графики твоей записи…";
   document.getElementById("plot-box").setAttribute("aria-busy", "true");
   activeController = new AbortController();
@@ -96,12 +97,6 @@ function choose() {
   void redraw();
 }
 
-const selectedAudio = audioSettings.load();
-configureSliders(selectedAudio || audioSettings.defaults);
-showSettingsStatus(Boolean(selectedAudio));
-document.getElementById("preprocessing-note").textContent = preprocessing.denoise_strength > 0
-  ? `Шумоподавление уже применено: сила ${preprocessing.denoise_strength}, окно ${preprocessing.denoise_n_fft}. Здесь ты видишь и слышишь обработанную запись.`
-  : "Здесь ты видишь исходную запись. На этапе «Шумоподавление» обработка не применена или выбрана сила 0.";
 labelInput.addEventListener("change", choose);
 fileInput.addEventListener("change", redraw);
 for (const id of Object.values(sliderIds)) document.getElementById(id).addEventListener("input", () => {
@@ -110,11 +105,31 @@ for (const id of Object.values(sliderIds)) document.getElementById(id).addEventL
   plotStatus.hidden = false; plotStatus.textContent = "Обновляю графики с твоими параметрами…";
   clearTimeout(redrawTimer); redrawTimer = setTimeout(redraw, 180);
 });
-document.getElementById("apply-features").addEventListener("click", () => {
-  if (audioSettings.save(readSettings())) showSettingsStatus(true);
-  else document.getElementById("audio-settings-status").textContent = "Не получилось сохранить признаки в браузере. Разреши локальное хранилище и нажми «Применить» еще раз.";
+document.getElementById("apply-features").addEventListener("click", async () => {
+  const button = document.getElementById("apply-features");
+  button.disabled = true;
+  try {await audioSettings.save(readSettings()); showSettingsStatus(true);}
+  catch (error) {document.getElementById("audio-settings-status").textContent = error.message;}
+  finally {button.disabled = false;}
 });
-fetch("/api/samples", {cache: "no-store"}).then(response => {
-  if (!response.ok) throw new Error("Не получилось загрузить твои записи. Попробуй обновить страницу.");
-  return response.json();
-}).then(data => {recordings = data; choose();}).catch(error => {plotStatus.textContent = error.message; document.getElementById("plot-box").setAttribute("aria-busy", "false");});
+
+async function initialize() {
+  const controls = [...document.querySelectorAll(".plot-panel input, .plot-panel select, .plot-panel button")];
+  controls.forEach(control => {control.disabled = true;});
+  document.getElementById("apply-features").disabled = true;
+  try {
+    await audioSettings.init();
+    preprocessing = audioSettings.loadPreprocessing();
+    configureSliders(audioSettings.load());
+    showSettingsStatus(true);
+    document.getElementById("preprocessing-note").textContent = `Примененная обработка: шумоподавление ${preprocessing.denoise_strength}, окно ${preprocessing.denoise_n_fft}; обрезка тишины ${preprocessing.trim_silence ? "включена" : "выключена"}. Здесь ты видишь и слышишь этот вариант записи.`;
+    recordings = await audioSettings.request("/api/samples");
+    controls.forEach(control => {control.disabled = false;});
+    choose();
+    await audioSettings.showCache("features", labelInput.value, fileInput.value);
+  } catch (error) {
+    plotStatus.textContent = error.message;
+    document.getElementById("plot-box").setAttribute("aria-busy", "false");
+  }
+}
+void initialize();

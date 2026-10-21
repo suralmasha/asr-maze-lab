@@ -207,3 +207,7 @@ summary { font-size: 15px; font-weight: 650; color: var(--accent); min-height: 3
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+.cache-panel {display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); flex-wrap: wrap;}
+.cache-panel p {margin: 0; flex: 1; min-width: 220px; color: var(--muted);}
+.history-actions {display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;}

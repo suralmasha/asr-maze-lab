@@ -33,6 +33,7 @@ async function redraw() {
   const originalUrl = `/api/audio?${params}`;
   if ($("original-audio").getAttribute("src") !== originalUrl) {$("original-audio").src = originalUrl; $("original-audio").load();}
   params.set("strength", $("strength").value); params.set("n_fft", $("n-fft").value);
+  params.set("trim_silence", $("trim-silence").value);
   $("plot-status").textContent = "Убираю шум и рисую графики…";
   $("plot-box").setAttribute("aria-busy", "true");
   activeController = new AbortController();
@@ -65,25 +66,42 @@ function markUnapplied() {
   $("preprocessing-status").textContent = "Это предварительный просмотр. Нажми «Применить», чтобы использовать эти настройки для всех записей дальше.";
 }
 
-const applied = audioSettings.loadPreprocessing();
-if (applied) {
-  $("strength").value = applied.denoise_strength; $("n-fft").value = applied.denoise_n_fft;
-  $("strength-value").value = Number($("strength").value).toFixed(1).replace(".", ",");
-  $("preprocessing-status").textContent = `Для всех записей применено шумоподавление: сила ${applied.denoise_strength}, окно ${applied.denoise_n_fft}.`;
-}
-$("n-fft").addEventListener("change", () => {markUnapplied(); void redraw();});
+for (const id of ["n-fft", "trim-silence"]) $(id).addEventListener("change", () => {markUnapplied(); void redraw();});
 $("strength").addEventListener("input", () => {
   markUnapplied();
   $("strength-value").value = Number($("strength").value).toFixed(1).replace(".", ",");
   clearTimeout(redrawTimer); redrawTimer = setTimeout(redraw, 180);
 });
-$("apply-preprocessing").addEventListener("click", () => {
-  const settings = {denoise_strength: Number($("strength").value), denoise_n_fft: Number($("n-fft").value)};
-  $("preprocessing-status").textContent = audioSettings.savePreprocessing(settings)
-    ? `Для всех записей применено шумоподавление: сила ${settings.denoise_strength}, окно ${settings.denoise_n_fft}. Эти настройки будут использоваться в обучении и распознавании.`
-    : "Не получилось сохранить настройки в браузере. Разреши локальное хранилище и нажми «Применить» еще раз.";
+$("apply-preprocessing").addEventListener("click", async () => {
+  const button = $("apply-preprocessing");
+  button.disabled = true;
+  const settings = {denoise_strength: Number($("strength").value), denoise_n_fft: Number($("n-fft").value), trim_silence: $("trim-silence").value === "true"};
+  try {
+    await audioSettings.savePreprocessing(settings);
+    $("preprocessing-status").textContent = `Для всех записей применено: шумоподавление ${settings.denoise_strength}, окно ${settings.denoise_n_fft}, обрезка тишины ${settings.trim_silence ? "включена" : "выключена"}. Настройки сохранены на сервере для признаков, обучения и распознавания.`;
+  } catch (error) {$("preprocessing-status").textContent = error.message;}
+  finally {button.disabled = false;}
 });
-fetch("/api/samples", {cache: "no-store"}).then(response => {
-  if (!response.ok) throw new Error("Не получилось загрузить твои записи. Попробуй обновить страницу.");
-  return response.json();
-}).then(data => {recordings = data; choose();}).catch(error => {$("plot-status").textContent = error.message; $("plot-box").setAttribute("aria-busy", "false");});
+
+async function initialize() {
+  const controls = [...document.querySelectorAll(".plot-panel input, .plot-panel select, .plot-panel button")];
+  controls.forEach(control => {control.disabled = true;});
+  $("apply-preprocessing").disabled = true;
+  try {
+    await audioSettings.init();
+    const applied = audioSettings.loadPreprocessing();
+    $("strength").value = applied.denoise_strength;
+    $("n-fft").value = applied.denoise_n_fft;
+    $("trim-silence").value = String(applied.trim_silence);
+    $("strength-value").value = Number(applied.denoise_strength).toFixed(1).replace(".", ",");
+    $("preprocessing-status").textContent = "Загружены примененные настройки обработки. Можно изменить их и нажать «Применить».";
+    recordings = await audioSettings.request("/api/samples");
+    controls.forEach(control => {control.disabled = false;});
+    choose();
+    await audioSettings.showCache("preprocess", $("label").value, $("filename").value);
+  } catch (error) {
+    $("plot-status").textContent = error.message;
+    $("plot-box").setAttribute("aria-busy", "false");
+  }
+}
+void initialize();

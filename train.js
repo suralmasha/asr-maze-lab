@@ -9,8 +9,6 @@ let modelReady = false;
 let pollTimer = null;
 let sampleCounts = {};
 let countsLoaded = false;
-let settingsLoaded = false;
-let settingsDirty = false;
 let projectionData = null;
 let projectionRequest = 0;
 let projectionNeedsRefresh = true;
@@ -29,7 +27,7 @@ function readSettings() {
   return {
     ...featureSettings, k: Number($("k").value),
     normalize: $("normalize").checked, metric: $("metric").value, weights: $("weights").value,
-    samples_per_class: Number($("samples-per-class").value), trim_silence: $("trim-silence").value === "true",
+    samples_per_class: Number($("samples-per-class").value),
     noise: Number($("noise").value),
   };
 }
@@ -42,7 +40,6 @@ function applySettings(settings) {
     if (settings[key] !== undefined) $(id).value = settings[key];
   }
   if (settings.normalize !== undefined) $("normalize").checked = Boolean(settings.normalize);
-  if (settings.trim_silence !== undefined) $("trim-silence").value = String(settings.trim_silence);
   if (settings.noise !== undefined) {
     const choices = [0, 0.03, 0.08];
     $("noise").value = String(choices.reduce((closest, value) => Math.abs(value - settings.noise) < Math.abs(closest - settings.noise) ? value : closest));
@@ -59,7 +56,7 @@ function updateSettingLabels() {
   $("k-value").value = $("k").value;
   $("samples-value").value = perClass === 50 ? "Все, до 50" : `До ${perClass}`;
   $("training-size").textContent = countsLoaded ? `Для обучения возьмем ${sourceCount} твоих WAV. Обучающих примеров: ${count}, признаков: ${featureSettings.n_mfcc * 2}. Соседей можно выбрать до ${Math.min(15, count)}.` : "Считаю твои записи…";
-  $("applied-settings").textContent = `Для всех записей: ${featureSettings.n_mels} мел-фильтров, ${featureSettings.n_mfcc} MFCC, окно ${featureSettings.n_fft}, шаг ${featureSettings.hop_length}. Шумоподавление: ${featureSettings.denoise_strength > 0 ? `сила ${featureSettings.denoise_strength}, окно ${featureSettings.denoise_n_fft}` : "выключено"}. Изменить их можно на этапах 04 и 05 кнопкой «Применить».`;
+  $("applied-settings").textContent = `Для всех записей: ${featureSettings.n_mels} мел-фильтров, ${featureSettings.n_mfcc} MFCC, окно ${featureSettings.n_fft}, шаг ${featureSettings.hop_length}. Шумоподавление: ${featureSettings.denoise_strength > 0 ? `сила ${featureSettings.denoise_strength}, окно ${featureSettings.denoise_n_fft}` : "выключено"}. Обрезка тишины: ${featureSettings.trim_silence ? "включена" : "выключена"}. Изменить их можно на этапах 04 и 05 кнопкой «Применить».`;
   updateActions();
 }
 
@@ -68,6 +65,8 @@ function updateActions() {
   $("train-button").disabled = busy || probeBusy || recorder.isRecording || !enoughSamples;
   $("training-settings").disabled = busy || probeBusy || recorder.isRecording;
   $("probe-button").disabled = busy || probeBusy || !modelReady;
+  $("probe-denoise").disabled = busy || probeBusy || recorder.isRecording;
+  for (const id of ["select-model", "delete-model", "clear-models", "model-select"]) $(id).disabled = busy || probeBusy || recorder.isRecording || !$("model-select").options.length;
 }
 
 async function updateCounts() {
@@ -96,16 +95,6 @@ function describeModel(settings, count) {
 function setTrainStatus(state) {
   const wasBusy = busy;
   busy = state.state === "running";
-  if (!settingsLoaded && !settingsDirty) {
-    applySettings(busy ? state.settings : state.model_settings);
-    const selectedAudio = audioSettings.load();
-    const selectedPreprocessing = audioSettings.loadPreprocessing();
-    if ((selectedAudio || selectedPreprocessing) && !busy) {
-      applySettings({...readSettings(), ...selectedAudio, ...selectedPreprocessing});
-      $("settings-note").textContent = "Используем примененные настройки с этапов «Шумоподавление» и «Признаки». Нажми «Обучить модель», чтобы обучить с ними новую модель.";
-    }
-    settingsLoaded = true;
-  }
   $("progress").value = state.percent || 0;
   $("progress-percent").textContent = `${state.percent || 0}%`;
   $("progress-stage").textContent = {idle: "Можно начинать", features: "Считаю признаки", fit: "Запоминаю примеры", save: "Сохраняю модель", done: "Готово!", error: "Не получилось обучить"}[state.stage] || (state.ready ? "Модель готова" : "Ожидание");
@@ -114,9 +103,19 @@ function setTrainStatus(state) {
   modelReady = Boolean(state.ready) && !busy;
   $("model-settings").textContent = describeModel(state.model_settings, state.training_count);
   if (wasBusy && !busy && state.state === "done") {
-    settingsDirty = false;
     $("settings-note").textContent = "Готово! Твои настройки сохранены. Теперь попробуй произнести новую команду.";
     projectionNeedsRefresh = true;
+    void refreshModels();
+  }
+  if (!modelReady && !busy) {
+    projectionRequest++;
+    projectionData = null;
+    $("projection").setAttribute("hidden", "");
+    $("projection-selection").hidden = true;
+    $("probe-result").hidden = true;
+    $("projection-legend").replaceChildren();
+    $("projection-status").hidden = false;
+    $("projection-status").textContent = "Обучи модель или выбери сохраненную, чтобы увидеть карту записей.";
   }
   if (modelReady && !recorder.isRecording && !probeBusy) $("probe-status").textContent = "Твоя модель готова. Нажми «Произнести команду» и проверь ее на новой записи.";
   updateActions();
@@ -247,7 +246,7 @@ async function drawProjection() {
 $("point-select").addEventListener("change", () => selectPoint(Number($("point-select").value)));
 window.addEventListener("resize", () => {clearTimeout(resizeTimer); resizeTimer = setTimeout(renderProjection, 100);});
 $("training-settings").addEventListener("input", () => {
-  settingsDirty = true; updateSettingLabels();
+  updateSettingLabels();
   $("settings-note").textContent = modelReady ? "Чтобы применить новые настройки, нажми «Обучить модель». До этого твоя модель работает с прежними настройками." : "Меняй настройки и нажми «Обучить модель». Сохраним их вместе с твоей моделью.";
 });
 $("train-button").addEventListener("click", async () => {
@@ -298,7 +297,7 @@ async function toggleProbe() {
   $("probe-status").textContent = "Ищу записи, похожие на твою команду…";
   try {
     const blob = await recorder.stop();
-    const result = await api("/api/train/probe", {method: "POST", headers: {"Content-Type": "audio/wav"}, body: blob});
+    const result = await api(`/api/train/probe?denoise=${$("probe-denoise").checked}`, {method: "POST", headers: {"Content-Type": "audio/wav"}, body: blob});
     showPrediction(result);
     $("probe-status").textContent = "Готово! Посмотри, какие записи оказались похожими. Твоя новая команда отмечена звездой на карте.";
     await drawProjection();
@@ -307,4 +306,61 @@ async function toggleProbe() {
 }
 
 $("probe-button").addEventListener("click", toggleProbe);
-Promise.all([updateCounts(), refreshStatus()]).catch(error => {$("counts").textContent = error.message; $("train-message").textContent = error.message;});
+async function refreshModels() {
+  try {
+    const data = await api("/api/models");
+    $("model-history").hidden = !data.enabled;
+    const selected = $("model-select").value;
+    $("model-select").replaceChildren();
+    for (const model of data.models) {
+      const option = document.createElement("option");
+      option.value = model.id;
+      const settings = model.settings;
+      const date = new Date(typeof model.created_at === "number" ? model.created_at * 1000 : model.created_at);
+      const stamp = Number.isNaN(date.getTime()) ? String(model.created_at) : date.toLocaleString("ru-RU");
+      option.textContent = `${model.active || model.id === data.active_id ? "Активна · " : ""}${stamp} · k=${settings.k}, MFCC=${settings.n_mfcc}, окно=${settings.n_fft}, ${model.training_count} примеров`;
+      $("model-select").add(option);
+    }
+    if (data.models.some(model => model.id === selected)) $("model-select").value = selected;
+    else if (data.active_id) $("model-select").value = data.active_id;
+    if (!data.models.length) $("history-status").textContent = "Пока нет сохраненных моделей. Обучи первый вариант.";
+    updateActions();
+  } catch (error) {$("model-history").hidden = false; $("history-status").textContent = error.message;}
+}
+
+async function changeHistory(action) {
+  if (busy || probeBusy || recorder.isRecording) return;
+  const id = $("model-select").value;
+  if (!id && action !== "clear") return;
+  if (action !== "select" && !window.confirm(action === "clear" ? "Удалить все сохраненные модели? Исходные WAV сохранятся." : "Удалить выбранную модель? Исходные WAV сохранятся.")) return;
+  for (const control of ["select-model", "delete-model", "clear-models", "model-select", "train-button", "probe-button"]) $(control).disabled = true;
+  try {
+    await api(`/api/models/${action}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id})});
+    if (action === "select") {
+      await audioSettings.init();
+      applySettings(audioSettings.settings);
+      projectionNeedsRefresh = true;
+      selectedPoint = 0;
+      $("probe-result").hidden = true;
+      $("settings-note").textContent = "Восстановлены настройки выбранной модели, включая обработку и признаки на предыдущих этапах.";
+    }
+    $("history-status").textContent = action === "select" ? "Модель активна для проверки и игры." : "Модели удалены. Исходные записи сохранены.";
+    await refreshModels();
+    await refreshStatus();
+  } catch (error) {$("history-status").textContent = error.message;}
+  finally {updateActions();}
+}
+
+$("select-model").addEventListener("click", () => {void changeHistory("select");});
+$("delete-model").addEventListener("click", () => {void changeHistory("delete");});
+$("clear-models").addEventListener("click", () => {void changeHistory("clear");});
+
+async function initialize() {
+  $("training-settings").disabled = true;
+  try {
+    await audioSettings.init();
+    applySettings(audioSettings.settings);
+    await Promise.all([updateCounts(), refreshStatus(), refreshModels(), audioSettings.showCache()]);
+  } catch (error) {$("counts").textContent = error.message; $("train-message").textContent = error.message;}
+}
+void initialize();

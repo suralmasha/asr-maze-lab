@@ -285,7 +285,7 @@ async function micToggle() {
   setMicButton("Ищу похожую команду…", false, true);
   try {
     const wav = await voiceRecorder.stop();
-    const response = await fetch("/api/predict", {
+    const response = await fetch(`/api/predict?denoise=${$("voice-denoise").checked}`, {
       method: "POST", headers: {"Content-Type": "audio/wav"}, body: wav,
     });
     const result = await response.json();
