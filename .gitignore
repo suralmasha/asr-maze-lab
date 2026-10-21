@@ -7,6 +7,6 @@ __pycache__/
 *.ipynb
 models/*
 !models/.gitkeep
-/.agents/skills/
+/.agents/
 /AGENTS.md
 /HOST_NOTES.md
