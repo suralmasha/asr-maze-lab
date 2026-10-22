@@ -31,6 +31,7 @@ from features import (
     make_feature_signal_figure,
     make_figure,
     make_mel_figure,
+    make_sampling_figure,
     make_signal_figure,
 )
 from lab_config import CONFIG
@@ -362,6 +363,14 @@ class Handler(SimpleHTTPRequestHandler):
             if path == "/api/audio":
                 wav = sample_path(self.params())
                 return self.bytes_response(200, wav.read_bytes(), "audio/wav")
+            if path == "/api/sampling":
+                params = self.params()
+                samples = load_wav(sample_path(params))
+                sample_rate = int(params.get("sample_rate", ["16000"])[0])
+                with _lock:
+                    return self.figure_response(
+                        make_sampling_figure(samples, sample_rate)
+                    )
             if path in (
                 "/api/plot",
                 "/api/compare",

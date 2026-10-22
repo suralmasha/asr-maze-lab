@@ -18,11 +18,13 @@ from typing import Any
 from unittest.mock import patch
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 import lab_server
 from experiment_settings import validate_settings
 from features import (
     load_wav,
+    make_sampling_figure,
     representation,
     representation_with_settings,
     suppress_noise,
@@ -59,6 +61,46 @@ def tone(freq: float) -> bytes:
 
 class TestWebTraining(unittest.TestCase):
     """Проверяет HTTP-контракт на отдельном временном датасете."""
+
+    def test_sampling_preview_preserves_source(self) -> None:
+        """Меняет дискретизацию графиков, сохраняя WAV и настройки обучения."""
+        original = tone(220)
+        source = lab_server.DATA / "up" / "01.wav"
+        source.write_bytes(original)
+        _, before = self.request("/api/settings")
+        for rate in CONFIG["sampling_rates"]:
+            with self.subTest(rate=rate):
+                status, image = self.request(
+                    f"/api/sampling?label=up&file=01.wav&sample_rate={rate}"
+                )
+                self.assertEqual(status, 200, image[:200])
+                self.assertTrue(image.startswith(b"\x89PNG"))
+        for rate in (0, 3000, 128000):
+            status, _ = self.request(
+                f"/api/sampling?label=up&file=01.wav&sample_rate={rate}"
+            )
+            self.assertEqual(status, 400)
+        _, after = self.request("/api/settings")
+        self.assertEqual(json.loads(before)["settings"], json.loads(after)["settings"])
+        _, audio = self.request("/api/audio?label=up&file=01.wav")
+        self.assertEqual(audio, original)
+        self.assertEqual(source.read_bytes(), original)
+
+    def test_sampling_plot_scales_and_filtering(self) -> None:
+        """Сохраняет длительность и убирает частоты выше полосы новой дискретизации."""
+        times = np.arange(16000) / 16000
+        samples = np.sin(2 * np.pi * 220 * times) + np.sin(2 * np.pi * 3000 * times)
+        figure = make_sampling_figure(samples, 4000)
+        try:
+            wave_axis, spectrum_axis, stft_axis = figure.axes[:3]
+            self.assertEqual(len(wave_axis.lines[0].get_ydata()), 4000)
+            self.assertEqual(wave_axis.get_xlim(), (0, 1))
+            self.assertEqual(spectrum_axis.get_xlim(), (0, 2000))
+            self.assertEqual(stft_axis.images[0].get_extent()[-1], 2000)
+            spectrum = abs(np.fft.rfft(wave_axis.lines[0].get_ydata()))
+            self.assertLess(spectrum[1000], spectrum[220] * 0.01)
+        finally:
+            plt.close(figure)
 
     def test_browser_configuration(self) -> None:
         """Передает браузеру общий конфиг и загрузчик элементов управления."""

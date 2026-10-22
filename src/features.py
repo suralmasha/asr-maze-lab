@@ -11,7 +11,7 @@ import matplotlib
 import numpy as np
 from scipy.fft import dct
 from scipy.ndimage import uniform_filter1d
-from scipy.signal import istft, stft
+from scipy.signal import istft, resample_poly, stft
 
 from experiment_settings import validate_settings
 from lab_config import CONFIG
@@ -255,16 +255,19 @@ def extract_features_with_settings(
     )
 
 
-def _draw_views(info: dict[str, Any], axes: Any) -> None:
+def _draw_views(
+    info: dict[str, Any], axes: Any, sample_rate: int = SAMPLE_RATE
+) -> None:
     """
     Рисует представления звука на переданных осях.
 
     :param info: Рассчитанные представления аудио.
     :param axes: Оси волны, спектра, STFT и необязательной мел-спектрограммы.
+    :param sample_rate: Частота дискретизации отображаемого звука.
     """
     samples = info["samples"]
     axes[0].plot(
-        np.arange(samples.size) / SAMPLE_RATE, samples, color="#3458a0", linewidth=0.7
+        np.arange(samples.size) / sample_rate, samples, color="#3458a0", linewidth=0.7
     )
     axes[0].set(
         title="1 - Волновая форма",
@@ -282,9 +285,9 @@ def _draw_views(info: dict[str, Any], axes: Any) -> None:
         title="2 - Усредненный спектр",
         xlabel="Частота, Гц",
         ylabel="Мощность, дБ",
-        xlim=(0, 8000),
+        xlim=(0, sample_rate / 2),
     )
-    views = [(axes[2], info["power"], "3 - Спектрограмма (STFT)", [0, 8000])]
+    views = [(axes[2], info["power"], "3 - Спектрограмма (STFT)", [0, sample_rate / 2])]
     if len(axes) > 3:
         views.append(
             (
@@ -318,6 +321,49 @@ def _draw_views(info: dict[str, Any], axes: Any) -> None:
         axis.figure.colorbar(image, ax=axis, label="Мощность, дБ", shrink=0.83)
     for axis in axes:
         axis.grid(alpha=0.15)
+
+
+def make_sampling_figure(wav: np.ndarray, sample_rate: int) -> Figure:
+    """
+    Строит демонстрацию дискретизации без изменения исходной записи.
+
+    :param wav: Исходные отсчеты с частотой 16000 Гц.
+    :param sample_rate: Частота демонстрации из разрешенной шкалы.
+    :return: Волна, спектр и спектрограмма демонстрационной копии.
+    """
+    import matplotlib.pyplot as plt
+
+    if sample_rate not in CONFIG["sampling_rates"]:
+        raise ValueError(
+            "ASR-DAT-02: Unsupported preview sample rate (Hint: fix request)"
+        )
+    samples = resample_poly(wav, sample_rate, SAMPLE_RATE)
+    samples = samples / max(float(np.max(np.abs(samples))), 0.001)
+    window = min(samples.size, max(4, round(0.032 * sample_rate)))
+    frequencies, times, spectrum = stft(
+        samples,
+        fs=sample_rate,
+        nperseg=window,
+        noverlap=window - max(1, window // 4),
+        boundary=None,
+        padded=False,
+    )
+    figure, axes = plt.subplots(1, 3, figsize=(15, 3.6), constrained_layout=True)
+    figure.patch.set_facecolor("#ffffff")
+    _draw_views(
+        {
+            "samples": samples,
+            "freq": frequencies,
+            "times": times,
+            "power": abs(spectrum) ** 2,
+        },
+        axes,
+        sample_rate,
+    )
+    axes[0].set_title(f"1 - Волновая форма ({samples.size} отсчетов)")
+    for index in (0, 2):
+        axes[index].set_xlim(0, wav.size / SAMPLE_RATE)
+    return figure
 
 
 def make_figure(wav: np.ndarray) -> Figure:

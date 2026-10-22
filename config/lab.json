@@ -1,5 +1,6 @@
 {
   "cache_max_bytes": 400000000,
+  "sampling_rates": [1000, 2000, 4000, 8000, 16000],
   "audio": {
     "min_samples": 5,
     "max_samples": 50,

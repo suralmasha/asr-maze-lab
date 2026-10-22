@@ -48,6 +48,15 @@ def _validate(config: dict[str, Any]) -> None:
         config["limits"],
         config["defaults"],
     )
+    rates = config["sampling_rates"]
+    _require(
+        isinstance(rates, list)
+        and bool(rates)
+        and all(type(rate) is int and rate > 0 for rate in rates)
+        and rates == sorted(set(rates))
+        and 16000 in rates,
+        "Частоты демонстрации должны быть положительными, возрастать и включать 16000.",
+    )
     for value in (
         config["cache_max_bytes"],
         audio["min_samples"],
