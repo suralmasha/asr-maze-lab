@@ -1,21 +1,5 @@
 @import url("workshop.css");
 
-.top-explainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 14px 18px;
-  margin-bottom: 22px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 14px;
-}
-.top-explainer b {
-  color: var(--accent);
-}
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
@@ -441,10 +425,6 @@
   }
   .robot {
     border-radius: 5px;
-  }
-  .top-explainer {
-    gap: 8px;
-    font-size: 12px;
   }
   .footnote {
     grid-template-columns: 1fr;

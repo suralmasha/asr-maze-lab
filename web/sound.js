@@ -2,6 +2,17 @@
 const $ = (id) => document.getElementById(id);
 let recordings = {};
 let requestNumber = 0;
+const samplingRates = labConfig.sampling_rates;
+$("sample-rate").max = samplingRates.length - 1;
+$("sample-rate").value = samplingRates.indexOf(16000);
+for (const [index, rate] of samplingRates.entries()) {
+  const tick = document.createElement("span");
+  tick.textContent = `${rate / 1000} кГц`;
+  $("sample-rate-ticks").append(tick);
+  const step = document.createElement("option");
+  step.value = index;
+  $("sample-rate-steps").append(step);
+}
 
 function choose() {
   const previous = $("filename").value;
@@ -19,6 +30,9 @@ function choose() {
 }
 
 function redraw() {
+  const sampleRate = samplingRates[Number($("sample-rate").value)];
+  $("sample-rate-value").value = `${sampleRate / 1000} кГц`;
+  $("sample-rate").setAttribute("aria-valuetext", `${sampleRate / 1000} кГц`);
   const request = ++requestNumber;
   $("plot").hidden = true;
   $("plot-status").hidden = false;
@@ -34,7 +48,9 @@ function redraw() {
     label: $("label").value,
     file: $("filename").value,
   });
-  $("sample-audio").src = `/api/audio?${params}`;
+  const audioUrl = `/api/audio?${params}`;
+  if ($("sample-audio").getAttribute("src") !== audioUrl)
+    $("sample-audio").src = audioUrl;
   $("plot-status").textContent = "Рисую графики твоей записи…";
   $("plot-box").setAttribute("aria-busy", "true");
   $("plot").onload = () => {
@@ -44,15 +60,18 @@ function redraw() {
     $("plot-box").setAttribute("aria-busy", "false");
   };
   $("plot").onerror = () => {
+    if (request !== requestNumber) return;
     $("plot-status").textContent =
       "Не получилось показать графики. Попробуй выбрать запись еще раз.";
     $("plot-box").setAttribute("aria-busy", "false");
   };
-  $("plot").src = `/api/plot?${params}&view=signal&trim_silence=false`;
+  params.set("sample_rate", sampleRate);
+  $("plot").src = `/api/sampling?${params}`;
 }
 
 $("label").addEventListener("change", choose);
 $("filename").addEventListener("change", redraw);
+$("sample-rate").addEventListener("input", redraw);
 fetch("/api/samples", { cache: "no-store" })
   .then((response) => {
     if (!response.ok)

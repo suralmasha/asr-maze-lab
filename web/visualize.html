@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#f3f6fb" />
-    <title>05 · Признаки - Голосовой лабиринт</title>
-    <link rel="stylesheet" href="workshop.css" />
+    <title>05 · Параметры - Голосовой лабиринт</title>
+    <link rel="stylesheet" href="workshop.css?v=hints-1" />
     <script defer src="lab-config.js"></script>
     <script defer src="configure.js"></script>
     <script defer src="audio-settings.js"></script>
-    <script defer src="visualize.js"></script>
+    <script defer src="visualize.js?v=window-times-1"></script>
   </head>
   <body>
     <a class="skip-link" href="#stage-content">К содержимому этапа</a>
@@ -30,19 +30,19 @@
         ><a href="compare.html">03 Сравнение</a
         ><a href="preprocess.html">04 Шумоподавление</a
         ><a class="selected" aria-current="page" href="visualize.html"
-          >05 Признаки</a
+          >05 Параметры</a
         ><a href="train.html">06 Обучение</a
         ><a href="index.html">07 Лабиринт</a>
       </nav>
       <section class="hero" id="stage-content" tabindex="-1">
-        <h2>Подбери признаки звука</h2>
+        <h2>Подбери параметры звука</h2>
         <p>
           Меняй параметры и наблюдай за графиками. Когда найдешь подходящий
           вариант, нажми «Применить»: эти признаки будут использоваться для всех
           записей при обучении.
         </p>
       </section>
-      <section class="plot-panel" aria-label="Признаки выбранной записи">
+      <section class="plot-panel" aria-label="Параметры выбранной записи">
         <div class="selectors">
           <label
             >Команда<select id="label">
@@ -106,8 +106,10 @@
                 aria-hidden="true"
               ></span
               ><small id="fft-help" class="control-help"
-                >Уменьшить: лучше видны быстрые изменения звука.<br />
-                Увеличить: лучше различимы близкие частоты.</small
+                ><span role="img" aria-label="Уменьшить">↓</span> лучше видны
+                быстрые изменения звука<br />
+                <span role="img" aria-label="Увеличить">↑</span> лучше различимы
+                близкие частоты</small
               ></label
             >
             <label class="control-field" for="hop-length"
@@ -126,9 +128,14 @@
                 aria-hidden="true"
               ></span
               ><small id="hop-help" class="control-help"
-                >Уменьшить: больше срезов звука по времени.<br />
-                Увеличить: меньше срезов звука по времени.<br />
-                Ограничение: шаг окна не больше размера окна.</small
+                ><span role="img" aria-label="Уменьшить">↓</span> больше срезов
+                звука по времени<br />
+                <span role="img" aria-label="Увеличить">↑</span> меньше срезов
+                звука по времени<br />
+                <span class="hint-limit" role="img" aria-label="Ограничение"
+                  >❗</span
+                >
+                шаг окна не больше размера окна</small
               ></label
             >
             <label class="control-field" for="n-mels"
@@ -147,8 +154,10 @@
                 aria-hidden="true"
               ></span
               ><small id="mel-help" class="control-help"
-                >Уменьшить: частотные полосы шире, деталей спектра меньше.<br />
-                Увеличить: частотные полосы уже, деталей спектра больше.</small
+                ><span role="img" aria-label="Уменьшить">↓</span> частотные
+                полосы шире, деталей спектра меньше<br />
+                <span role="img" aria-label="Увеличить">↑</span> частотные
+                полосы уже, деталей спектра больше</small
               ></label
             >
             <label class="control-field" for="n-mfcc"
@@ -167,9 +176,14 @@
                 aria-hidden="true"
               ></span
               ><small id="mfcc-help" class="control-help"
-                >Уменьшить: меньше деталей спектра.<br />
-                Увеличить: больше деталей спектра.<br />
-                Ограничение: коэффициентов не больше, чем мел-фильтров.</small
+                ><span role="img" aria-label="Уменьшить">↓</span> меньше деталей
+                спектра<br />
+                <span role="img" aria-label="Увеличить">↑</span> больше деталей
+                спектра<br />
+                <span class="hint-limit" role="img" aria-label="Ограничение"
+                  >❗</span
+                >
+                коэффициентов не больше, чем мел-фильтров</small
               ></label
             >
             <button class="action" id="apply-features" type="button">

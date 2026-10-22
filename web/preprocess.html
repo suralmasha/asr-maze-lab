@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#f3f6fb" />
     <title>04 · Шумоподавление - Голосовой лабиринт</title>
-    <link rel="stylesheet" href="workshop.css" />
+    <link rel="stylesheet" href="workshop.css?v=preprocessing-levels-1" />
     <script defer src="lab-config.js"></script>
     <script defer src="configure.js"></script>
     <script defer src="audio-settings.js"></script>
-    <script defer src="preprocess.js"></script>
+    <script defer src="preprocess.js?v=strength-levels-1"></script>
   </head>
   <body>
     <a class="skip-link" href="#stage-content">К содержимому этапа</a>
@@ -30,7 +30,7 @@
         ><a href="compare.html">03 Сравнение</a
         ><a class="selected" aria-current="page" href="preprocess.html"
           >04 Шумоподавление</a
-        ><a href="visualize.html">05 Признаки</a
+        ><a href="visualize.html">05 Параметры</a
         ><a href="train.html">06 Обучение</a
         ><a href="index.html">07 Лабиринт</a>
       </nav>
@@ -39,7 +39,9 @@
         <p>
           Выбери запись и подвигай ползунок. Слева ты увидишь исходный звук,
           справа - звук после обработки. Послушай оба варианта: стало ли меньше
-          шума и сохранился ли голос?
+          шума и сохранился ли голос? Когда найдешь подходящий вариант, нажми
+          «Применить»: эти признаки будут использоваться для всех записей при
+          обучении.
         </p>
       </section>
       <section class="plot-panel" aria-label="Эксперимент с шумоподавлением">
@@ -53,48 +55,62 @@
             </select></label
           ><label>Файл<select id="filename"></select></label>
         </div>
-        <div class="experiment-controls">
-          <label class="control-field" for="strength"
-            ><span
-              >Сила шумоподавления:
-              <output
-                id="strength-value"
-                for="strength"
-                data-config="defaults.denoise_strength"
-              ></output></span
-            ><input
-              id="strength"
-              type="range"
-              data-config-min="limits.denoise_strength.0"
-              data-config-max="limits.denoise_strength.1"
-              data-config-value="defaults.denoise_strength"
-              data-config-step="preprocessing.strength_step"
-              aria-describedby="strength-help"
-            /><small id="strength-help" class="control-help"
-              >Начни с
-              <span data-config="preprocessing.preview_strength"></span> и
-              сравни результат на слух. Сила задается от
-              <span data-config="limits.denoise_strength.0"></span> до
-              <span data-config="limits.denoise_strength.1"></span>. При большом
-              значении шум подавляется сильнее, но голос тоже может
-              измениться.</small
-            ></label
-          >
-          <label class="control-field" for="n-fft"
-            >Размер окна (n_fft)<select id="n-fft"></select
-          ></label>
-          <label class="control-field" for="trim-silence"
-            >Удаление тишины<select
-              id="trim-silence"
-              data-config-value="defaults.trim_silence"
+        <div
+          class="preprocessing-controls"
+          role="group"
+          aria-label="Параметры обработки"
+        >
+          <div class="experiment-controls">
+            <label class="control-field" for="strength"
+              ><span
+                >Сила шумоподавления:
+                <output
+                  id="strength-value"
+                  for="strength"
+                  data-config="defaults.denoise_strength"
+                ></output></span
+              ><input
+                id="strength"
+                type="range"
+                data-config-min="limits.denoise_strength.0"
+                data-config-max="limits.denoise_strength.1"
+                data-config-value="defaults.denoise_strength"
+                data-config-step="preprocessing.strength_step"
+                aria-describedby="strength-help"
+              /><span class="mel-values" aria-hidden="true">
+                <span data-config="limits.denoise_strength.0"></span>
+                <span>1</span>
+                <span data-config="limits.denoise_strength.1"></span> </span
+              ><small id="strength-help" class="control-help"
+                >При большом значении шум подавляется сильнее, но голос тоже
+                может измениться</small
+              ></label
             >
-              <option value="true">Удаляем паузы по краям</option>
-              <option value="false">Оставляем паузы</option></select
-            ><small class="control-help"
-              >Эта обработка применяется к признакам, обучению и новым командам
-              после нажатия «Применить».</small
-            ></label
-          >
+            <div class="preprocessing-actions">
+              <label class="setting-toggle" for="trim-silence">
+                <input
+                  id="trim-silence"
+                  type="checkbox"
+                  data-config-checked="defaults.trim_silence"
+                />
+                <span>Удалить паузы по краям</span>
+              </label>
+              <div class="apply-settings">
+                <p
+                  id="preprocessing-status"
+                  class="control-help"
+                  role="status"
+                  aria-live="polite"
+                >
+                  Нажми «Применить», чтобы использовать это шумоподавление для
+                  всех записей на следующих этапах.
+                </p>
+                <button class="action" id="apply-preprocessing" type="button">
+                  Применить
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="comparison-grid audio-pair">
           <div class="listen">
@@ -116,7 +132,7 @@
             ></audio>
           </div>
         </div>
-        <div id="plot-box" class="plot-box" aria-busy="true">
+        <div id="plot-box" class="plot-box preprocessing-plot" aria-busy="true">
           <div id="plot-status" role="status" aria-live="polite">
             Загружаю твои записи…
           </div>
@@ -128,20 +144,6 @@
             alt="Волновая форма и спектрограмма исходной записи и записи после шумоподавления"
             hidden
           />
-        </div>
-        <div class="apply-settings">
-          <button class="action" id="apply-preprocessing" type="button">
-            Применить
-          </button>
-          <p
-            id="preprocessing-status"
-            class="control-help"
-            role="status"
-            aria-live="polite"
-          >
-            Нажми «Применить», чтобы использовать это шумоподавление для всех
-            записей на следующих этапах.
-          </p>
         </div>
       </section>
       <div class="explanations">
@@ -165,7 +167,7 @@
       </div>
       <div class="footer-actions">
         <a class="action secondary" href="compare.html">К сравнению</a
-        ><a class="action" href="visualize.html">К признакам →</a>
+        ><a class="action" href="visualize.html">К параметрам →</a>
       </div>
     </main>
   </body>

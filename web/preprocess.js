@@ -6,6 +6,19 @@ let requestNumber = 0;
 let activeController = null;
 let imageUrl = null;
 
+function updateStrengthLabel() {
+  const strength = Number($("strength").value);
+  let level;
+  if (strength === 0) level = "отключено";
+  else if (strength < 1) level = "слабое";
+  else if (strength === 1) level = "среднее";
+  else if (strength < 2) level = "сильное";
+  else level = "очень сильное";
+  const label = `${strength.toLocaleString("ru-RU")} · ${level}`;
+  $("strength-value").value = label;
+  $("strength").setAttribute("aria-valuetext", label);
+}
+
 function choose() {
   const input = $("filename");
   const old = input.value;
@@ -48,8 +61,8 @@ async function redraw() {
     $("original-audio").load();
   }
   params.set("strength", $("strength").value);
-  params.set("n_fft", $("n-fft").value);
-  params.set("trim_silence", $("trim-silence").value);
+  params.set("n_fft", audioSettings.loadPreprocessing().denoise_n_fft);
+  params.set("trim_silence", $("trim-silence").checked);
   $("plot-status").textContent = "Убираю шум и рисую графики…";
   $("plot-box").setAttribute("aria-busy", "true");
   activeController = new AbortController();
@@ -94,16 +107,13 @@ function markUnapplied() {
     "Это предварительный просмотр. Нажми «Применить», чтобы использовать эти настройки для всех записей дальше.";
 }
 
-for (const id of ["n-fft", "trim-silence"])
-  $(id).addEventListener("change", () => {
-    markUnapplied();
-    void redraw();
-  });
+$("trim-silence").addEventListener("change", () => {
+  markUnapplied();
+  void redraw();
+});
 $("strength").addEventListener("input", () => {
   markUnapplied();
-  $("strength-value").value = Number($("strength").value).toLocaleString(
-    "ru-RU",
-  );
+  updateStrengthLabel();
   clearTimeout(redrawTimer);
   redrawTimer = setTimeout(redraw, 180);
 });
@@ -112,13 +122,13 @@ $("apply-preprocessing").addEventListener("click", async () => {
   button.disabled = true;
   const settings = {
     denoise_strength: Number($("strength").value),
-    denoise_n_fft: Number($("n-fft").value),
-    trim_silence: $("trim-silence").value === "true",
+    denoise_n_fft: audioSettings.loadPreprocessing().denoise_n_fft,
+    trim_silence: $("trim-silence").checked,
   };
   try {
     await audioSettings.savePreprocessing(settings);
     $("preprocessing-status").textContent =
-      `Для всех записей применено: шумоподавление ${settings.denoise_strength}, окно ${settings.denoise_n_fft}, обрезка тишины ${settings.trim_silence ? "включена" : "выключена"}. Настройки сохранены на сервере для признаков, обучения и распознавания.`;
+      `Для всех записей применено: шумоподавление ${settings.denoise_strength}, обрезка тишины ${settings.trim_silence ? "включена" : "выключена"}. Настройки сохранены на сервере для признаков, обучения и распознавания.`;
   } catch (error) {
     $("preprocessing-status").textContent = error.message;
   } finally {
@@ -127,14 +137,8 @@ $("apply-preprocessing").addEventListener("click", async () => {
 });
 
 async function initialize() {
-  for (const nFft of audioSettings.fftSizes) {
-    const option = document.createElement("option");
-    option.value = nFft;
-    option.textContent = `${nFft} отсчетов · ${(nFft / 16).toLocaleString("ru-RU")} мс`;
-    $("n-fft").add(option);
-  }
-  $("n-fft").value = audioSettings.defaults.denoise_n_fft;
-  $("trim-silence").value = String(audioSettings.defaults.trim_silence);
+  updateStrengthLabel();
+  $("trim-silence").checked = audioSettings.defaults.trim_silence;
   const controls = [
     ...document.querySelectorAll(
       ".plot-panel input, .plot-panel select, .plot-panel button",
@@ -148,13 +152,9 @@ async function initialize() {
     await audioSettings.init();
     const applied = audioSettings.loadPreprocessing();
     $("strength").value = applied.denoise_strength;
-    $("n-fft").value = applied.denoise_n_fft;
-    $("trim-silence").value = String(applied.trim_silence);
-    $("strength-value").value = Number(applied.denoise_strength).toLocaleString(
-      "ru-RU",
-    );
-    $("preprocessing-status").textContent =
-      "Загружены примененные настройки обработки. Можно изменить их и нажать «Применить».";
+    $("trim-silence").checked = applied.trim_silence;
+    updateStrengthLabel();
+    $("preprocessing-status").textContent = "";
     recordings = await audioSettings.request("/api/samples");
     controls.forEach((control) => {
       control.disabled = false;

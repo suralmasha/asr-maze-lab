@@ -35,8 +35,11 @@ function setSlider(id, values, selected) {
   input.dataset.values = JSON.stringify(values);
   input.max = values.length - 1;
   input.value = values.indexOf(nearest);
-  input.setAttribute("aria-valuetext", String(nearest));
-  document.getElementById(`${id}-value`).value = nearest;
+  const label = ["n-fft", "hop-length"].includes(id)
+    ? `${nearest} отсчетов · ${(nearest / 16).toLocaleString("ru-RU")} мс`
+    : String(nearest);
+  input.setAttribute("aria-valuetext", label);
+  document.getElementById(`${id}-value`).value = label;
   const ticks = document.getElementById(`${id}-ticks`);
   ticks.replaceChildren();
   for (const value of values) {

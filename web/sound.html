@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#f3f6fb" />
     <title>02 · Звук - Голосовой лабиринт</title>
-    <link rel="stylesheet" href="workshop.css" />
+    <link rel="stylesheet" href="workshop.css?v=hints-1" />
     <script defer src="lab-config.js"></script>
     <script defer src="configure.js"></script>
-    <script defer src="sound.js"></script>
+    <script defer src="sound.js?v=sampling-2"></script>
   </head>
   <body>
     <a class="skip-link" href="#stage-content">К содержимому этапа</a>
@@ -29,7 +29,7 @@
         ><a class="selected" aria-current="page" href="sound.html">02 Звук</a
         ><a href="compare.html">03 Сравнение</a
         ><a href="preprocess.html">04 Шумоподавление</a
-        ><a href="visualize.html">05 Признаки</a
+        ><a href="visualize.html">05 Параметры</a
         ><a href="train.html">06 Обучение</a
         ><a href="index.html">07 Лабиринт</a>
       </nav>
@@ -38,37 +38,77 @@
         <p>Выбери запись, послушай ее и рассмотри 3 графика.</p>
       </section>
       <section class="plot-panel" aria-label="Представления выбранной записи">
-        <div class="selectors">
-          <label
-            >Команда<select id="label">
-              <option value="up">↑ Вверх</option>
-              <option value="down">↓ Вниз</option>
-              <option value="left">← Влево</option>
-              <option value="right">→ Вправо</option>
-            </select></label
-          ><label>Файл<select id="filename"></select></label>
-          <div class="listen">
-            <span>Прослушать запись</span
-            ><audio
+        <div class="sampling-layout">
+          <fieldset class="comparison-card">
+            <legend>Запись</legend>
+            <div class="selectors">
+              <label
+                >Команда<select id="label">
+                  <option value="up">↑ Вверх</option>
+                  <option value="down">↓ Вниз</option>
+                  <option value="left">← Влево</option>
+                  <option value="right">→ Вправо</option>
+                </select></label
+              ><label>Файл<select id="filename"></select></label>
+            </div>
+            <audio
               id="sample-audio"
               controls
               preload="none"
-              aria-label="Выбранная запись"
+              aria-label="Прослушать выбранную запись"
             ></audio>
+          </fieldset>
+          <fieldset class="comparison-card">
+            <legend>Дискретизация</legend>
+            <label class="control-field" for="sample-rate">
+              <span
+                >Частота дискретизации:
+                <output id="sample-rate-value" for="sample-rate"></output
+              ></span>
+              <input
+                id="sample-rate"
+                type="range"
+                min="0"
+                step="1"
+                list="sample-rate-steps"
+                aria-describedby="sampling-help"
+              />
+              <datalist id="sample-rate-steps"></datalist>
+              <span
+                class="mel-values"
+                id="sample-rate-ticks"
+                aria-hidden="true"
+              ></span>
+              <small id="sampling-help" class="control-help"
+                ><span role="img" aria-label="Уменьшить">↓</span> меньше
+                отсчетов в секунду, меньше высоких частот*<br />
+                <span role="img" aria-label="Увеличить">↑</span> больше отсчетов
+                в секунду, больше высоких частот<br />
+                <span class="hint-limit" role="img" aria-label="Ограничение"
+                  >❗</span
+                >
+                исходная запись 16 кГц сохраняет звуковые частоты ниже 8 кГц.
+                Восстановить несохраненные частоты невозможно. Прослушивание и
+                следующие этапы всегда используют исходную запись 16 кГц.<br />
+                *Высокие частоты - это быстрые колебания. Чтобы их сохранить,
+                нужно делать больше двух отсчетов за период колебания (по
+                теореме Котельникова).</small
+              >
+            </label>
+          </fieldset>
+          <div class="plot-box" id="plot-box" aria-busy="true">
+            <div id="plot-status" role="status" aria-live="polite">
+              Загружаю твои записи…
+            </div>
+            <img
+              id="plot"
+              class="plot-image"
+              width="1725"
+              height="414"
+              alt="Волновая форма, усредненный спектр и спектрограмма выбранной записи"
+              hidden
+            />
           </div>
-        </div>
-        <div class="plot-box" id="plot-box" aria-busy="true">
-          <div id="plot-status" role="status" aria-live="polite">
-            Загружаю твои записи…
-          </div>
-          <img
-            id="plot"
-            class="plot-image"
-            width="1725"
-            height="414"
-            alt="Волновая форма, усредненный спектр и спектрограмма выбранной записи"
-            hidden
-          />
         </div>
       </section>
       <div class="explanations sound-explanations">
