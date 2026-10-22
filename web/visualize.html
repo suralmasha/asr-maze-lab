@@ -106,8 +106,8 @@
                 aria-hidden="true"
               ></span
               ><small id="fft-help" class="control-help"
-                >Большое окно помогает различать близкие частоты, маленькое -
-                быстрые изменения звука.</small
+                >Уменьшить: лучше видны быстрые изменения звука.<br />
+                Увеличить: лучше различимы близкие частоты.</small
               ></label
             >
             <label class="control-field" for="hop-length"
@@ -126,8 +126,9 @@
                 aria-hidden="true"
               ></span
               ><small id="hop-help" class="control-help"
-                >Маленький шаг дает больше срезов звука по времени. Шаг не может
-                быть больше окна.</small
+                >Уменьшить: больше срезов звука по времени.<br />
+                Увеличить: меньше срезов звука по времени.<br />
+                Ограничение: шаг окна не больше размера окна.</small
               ></label
             >
             <label class="control-field" for="n-mels"
@@ -146,8 +147,8 @@
                 aria-hidden="true"
               ></span
               ><small id="mel-help" class="control-help"
-                >Меняй число треугольников и смотри, как меняется
-                мел-спектрограмма.</small
+                >Уменьшить: частотные полосы шире, деталей спектра меньше.<br />
+                Увеличить: частотные полосы уже, деталей спектра больше.</small
               ></label
             >
             <label class="control-field" for="n-mfcc"
@@ -166,8 +167,9 @@
                 aria-hidden="true"
               ></span
               ><small id="mfcc-help" class="control-help"
-                >Коэффициентов не может быть больше, чем мел-фильтров, и больше
-                <span data-config="limits.n_mfcc.1"></span>.</small
+                >Уменьшить: меньше деталей спектра.<br />
+                Увеличить: больше деталей спектра.<br />
+                Ограничение: коэффициентов не больше, чем мел-фильтров.</small
               ></label
             >
             <button class="action" id="apply-features" type="button">
