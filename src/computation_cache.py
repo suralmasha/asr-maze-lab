@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 import threading
+import time
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,9 @@ class DiskCache:
             path.name: (path.stat().st_size, path.stat().st_mtime_ns)
             for path in self.root.glob("*.cache")
         }
+        self._last_used_ns = max(
+            (used for _, used in self._entries.values()), default=0
+        )
         self._size = sum(size for size, _ in self._entries.values())
         self._generation = 0
         self._tasks: Iterator[Task] | None = None
@@ -148,7 +152,7 @@ class DiskCache:
                     os.replace(temporary, path)
                 finally:
                     Path(temporary).unlink(missing_ok=True)
-                self._entries[name] = (len(value), path.stat().st_mtime_ns)
+                self._mark_used(name, len(value))
                 self._size += len(value)
                 if background and self._size >= self.limit:
                     self._paused = True
@@ -174,9 +178,20 @@ class DiskCache:
         path = self.root / name
         value = path.read_bytes()
         if not background:
-            path.touch()
-            self._entries[name] = (len(value), path.stat().st_mtime_ns)
+            self._mark_used(name, len(value))
         return value
+
+    def _mark_used(self, name: str, size: int) -> None:
+        """
+        Сохраняет строго возрастающую метку использования под блокировкой.
+
+        :param name: Имя файла результата.
+        :param size: Размер результата в байтах.
+        """
+        used = max(time.time_ns(), self._last_used_ns + 1)
+        os.utime(self.root / name, ns=(used, used))
+        self._last_used_ns = used
+        self._entries[name] = (size, used)
 
     def start(self, tasks: Iterable[Task]) -> None:
         """

@@ -8,6 +8,7 @@ import time
 import unittest
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import patch
 
 from computation_cache import DiskCache
 
@@ -40,16 +41,17 @@ class TestDiskCache(unittest.TestCase):
 
     def test_persistence_and_lru(self) -> None:
         """Повторный запуск сохраняет результаты и вытесняет давно неиспользуемые."""
-        self.cache.get_or_compute("a", lambda: b"aaaa")
-        self.cache.get_or_compute("b", lambda: b"bbbb")
-        self.cache.get_or_compute("a", lambda: b"wrong")
-        self.cache.stop()
-        self.cache._worker.join(timeout=2)
-        self.cache = DiskCache(self.root, limit=8)
-        self.cache.get_or_compute("c", lambda: b"cccc")
-        self.assertEqual(self.cache.get_or_compute("a", lambda: b"miss"), b"aaaa")
-        self.assertEqual(self.cache.get_or_compute("b", lambda: b"new"), b"new")
-        self.assertLessEqual(self.cache.status()["size"], 8)
+        with patch("time.time_ns", return_value=1_700_000_000_000_000_000):
+            self.cache.get_or_compute("a", lambda: b"aaaa")
+            self.cache.get_or_compute("b", lambda: b"bbbb")
+            self.cache.get_or_compute("a", lambda: b"wrong")
+            self.cache.stop()
+            self.cache._worker.join(timeout=2)
+            self.cache = DiskCache(self.root, limit=8)
+            self.cache.get_or_compute("c", lambda: b"cccc")
+            self.assertEqual(self.cache.get_or_compute("a", lambda: b"miss"), b"aaaa")
+            self.assertEqual(self.cache.get_or_compute("b", lambda: b"new"), b"new")
+            self.assertLessEqual(self.cache.status()["size"], 8)
 
     def test_background_pauses_without_eviction(self) -> None:
         """Заполненный кеш приостанавливает фон, сохраняя готовые результаты."""
