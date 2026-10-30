@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="workshop.css?v=hints-1" />
     <script defer src="lab-config.js"></script>
     <script defer src="configure.js"></script>
-    <script defer src="sound.js?v=sampling-2"></script>
+    <script defer src="sound.js?v=sampling-audio-1"></script>
   </head>
   <body>
     <a class="skip-link" href="#stage-content">К содержимому этапа</a>
@@ -51,12 +51,6 @@
                 </select></label
               ><label>Файл<select id="filename"></select></label>
             </div>
-            <audio
-              id="sample-audio"
-              controls
-              preload="none"
-              aria-label="Прослушать выбранную запись"
-            ></audio>
           </fieldset>
           <fieldset class="comparison-card">
             <legend>Дискретизация</legend>
@@ -88,14 +82,45 @@
                   >❗</span
                 >
                 исходная запись 16 кГц сохраняет звуковые частоты ниже 8 кГц.
-                Восстановить несохраненные частоты невозможно. Прослушивание и
-                следующие этапы всегда используют исходную запись 16 кГц.<br />
+                Восстановить несохраненные частоты невозможно. Сравни исходную
+                запись с выбранной частотой ниже. Следующие этапы используют
+                исходную запись 16 кГц.<br />
                 *Высокие частоты - это быстрые колебания. Чтобы их сохранить,
                 нужно делать больше двух отсчетов за период колебания (по
                 теореме Котельникова).</small
               >
             </label>
           </fieldset>
+          <div class="comparison-grid audio-pair">
+            <div class="listen">
+              <strong>1. Исходная запись · 16 кГц</strong>
+              <audio
+                id="sample-audio"
+                controls
+                preload="none"
+                aria-label="Прослушать исходную запись"
+              ></audio>
+            </div>
+            <div class="listen">
+              <strong
+                >2. Частота дискретизации ·
+                <span id="sampling-audio-rate"></span
+              ></strong>
+              <audio
+                id="sampling-audio"
+                controls
+                preload="none"
+                aria-label="Прослушать запись с выбранной частотой дискретизации"
+                aria-describedby="sampling-audio-status"
+              ></audio>
+              <small
+                id="sampling-audio-status"
+                class="control-help"
+                role="status"
+                aria-live="polite"
+              ></small>
+            </div>
+          </div>
           <div class="plot-box" id="plot-box" aria-busy="true">
             <div id="plot-status" role="status" aria-live="polite">
               Загружаю твои записи…

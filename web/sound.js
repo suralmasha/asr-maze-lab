@@ -32,6 +32,8 @@ function choose() {
 function redraw() {
   const sampleRate = samplingRates[Number($("sample-rate").value)];
   $("sample-rate-value").value = `${sampleRate / 1000} кГц`;
+  $("sampling-audio-rate").textContent = `${sampleRate / 1000} кГц`;
+  $("sampling-audio-status").textContent = "";
   $("sample-rate").setAttribute("aria-valuetext", `${sampleRate / 1000} кГц`);
   const request = ++requestNumber;
   $("plot").hidden = true;
@@ -42,6 +44,8 @@ function redraw() {
       "Пока здесь пусто. Вернись на этап «Данные» и запиши эту команду.";
     $("sample-audio").removeAttribute("src");
     $("sample-audio").load();
+    $("sampling-audio").removeAttribute("src");
+    $("sampling-audio").load();
     return;
   }
   const params = new URLSearchParams({
@@ -66,8 +70,24 @@ function redraw() {
     $("plot-box").setAttribute("aria-busy", "false");
   };
   params.set("sample_rate", sampleRate);
+  const samplingUrl = `/api/sampling/audio?${params}`;
+  if ($("sampling-audio").getAttribute("src") !== samplingUrl) {
+    $("sampling-audio").pause();
+    $("sampling-audio").src = samplingUrl;
+    $("sampling-audio").load();
+  }
   $("plot").src = `/api/sampling?${params}`;
 }
+
+$("sampling-audio").addEventListener("error", () => {
+  if ($("sampling-audio").getAttribute("src"))
+    $("sampling-audio-status").textContent =
+      "Не получилось загрузить аудио. Попробуй выбрать запись еще раз.";
+});
+for (const id of ["sample-audio", "sampling-audio"])
+  $(id).addEventListener("play", () => {
+    $(id === "sample-audio" ? "sampling-audio" : "sample-audio").pause();
+  });
 
 $("label").addEventListener("change", choose);
 $("filename").addEventListener("change", redraw);
