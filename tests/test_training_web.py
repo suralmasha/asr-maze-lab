@@ -23,6 +23,7 @@ from matplotlib import pyplot as plt
 import lab_server
 from experiment_settings import validate_settings
 from features import (
+    encode_wav,
     load_wav,
     make_sampling_figure,
     representation,
@@ -61,6 +62,41 @@ def tone(freq: float) -> bytes:
 
 class TestWebTraining(unittest.TestCase):
     """Проверяет HTTP-контракт на отдельном временном датасете."""
+
+    def test_sampling_audio_preserves_duration_and_source(self) -> None:
+        """Проверяет частоты WAV, фильтрацию и сохранность исходника и настроек."""
+        original = encode_wav((load_wav(tone(220)) + load_wav(tone(3000))) / 2)
+        source = lab_server.DATA / "up" / "01.wav"
+        source.write_bytes(original)
+        _, before = self.request("/api/settings")
+        for rate in CONFIG["sampling_rates"]:
+            with self.subTest(rate=rate):
+                status, audio = self.request(
+                    f"/api/sampling/audio?label=up&file=01.wav&sample_rate={rate}"
+                )
+                self.assertEqual(status, 200, audio[:200])
+                with wave.open(io.BytesIO(audio), "rb") as recording:
+                    self.assertEqual(recording.getframerate(), 16000)
+                    self.assertEqual(recording.getnframes(), 16000)
+                    self.assertEqual(recording.getnchannels(), 1)
+                    self.assertEqual(recording.getsampwidth(), 2)
+                    samples = np.frombuffer(recording.readframes(16000), dtype="<i2")
+                spectrum = abs(np.fft.rfft(samples))
+                self.assertEqual(np.argmax(spectrum[:1000]), 220)
+                if rate <= 4000:
+                    self.assertLess(spectrum[3000], spectrum[220] * 0.01)
+        for rate in (0, 3000, 128000, "invalid"):
+            status, _ = self.request(
+                f"/api/sampling/audio?label=up&file=01.wav&sample_rate={rate}"
+            )
+            self.assertEqual(status, 400)
+        status, _ = self.request("/api/sampling/audio?label=up&file=99.wav")
+        self.assertEqual(status, 404)
+        _, after = self.request("/api/settings")
+        self.assertEqual(json.loads(before)["settings"], json.loads(after)["settings"])
+        _, audio = self.request("/api/audio?label=up&file=01.wav")
+        self.assertEqual(audio, original)
+        self.assertEqual(source.read_bytes(), original)
 
     def test_sampling_preview_preserves_source(self) -> None:
         """Меняет дискретизацию графиков, сохраняя WAV и настройки обучения."""

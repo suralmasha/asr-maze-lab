@@ -323,6 +323,24 @@ def _draw_views(
         axis.grid(alpha=0.15)
 
 
+def make_sampling_audio(wav: np.ndarray, sample_rate: int) -> bytes:
+    """
+    Создает WAV с выбранной дискретизацией без изменения длительности записи.
+
+    :param wav: Исходные отсчеты с частотой 16000 Гц.
+    :param sample_rate: Частота демонстрации из разрешенной шкалы.
+    :return: Байты PCM WAV 16000 Гц с полосой выбранной дискретизации.
+    """
+    if sample_rate not in CONFIG["sampling_rates"]:
+        raise ValueError(
+            "ASR-DAT-02: Unsupported preview sample rate (Hint: fix request)"
+        )
+    samples = resample_poly(wav, sample_rate, SAMPLE_RATE)
+    # Браузеры не воспроизводят WAV на 1-2 кГц; возвращаем совместимую частоту.
+    samples = resample_poly(samples, SAMPLE_RATE, sample_rate)[: wav.size]
+    return encode_wav(samples)
+
+
 def make_sampling_figure(wav: np.ndarray, sample_rate: int) -> Figure:
     """
     Строит демонстрацию дискретизации без изменения исходной записи.
